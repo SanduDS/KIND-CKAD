@@ -61,6 +61,9 @@ router.post('/start', authenticate, sessionStartLimiter, asyncHandler(async (req
     const clusterResult = await KindService.createCluster(clusterName, ports);
     
     // Update session with kubeconfig path
+    SessionModel.updateDetails(session.id, { 
+      kubeconfigPath: clusterResult.kubeconfigPath 
+    });
     SessionModel.addNotes(session.id, `Cluster created in ${clusterResult.duration}ms`);
 
     // Create terminal container
@@ -70,7 +73,9 @@ router.post('/start', authenticate, sessionStartLimiter, asyncHandler(async (req
     );
 
     // Update session with terminal container ID
-    const updatedSession = SessionModel.findById(session.id);
+    SessionModel.updateDetails(session.id, { 
+      terminalContainerId: terminalResult.containerId 
+    });
 
     // Get session with time info
     const sessionWithTime = SessionModel.getWithTimeInfo(session.id);

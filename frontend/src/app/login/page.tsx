@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Mail, ArrowRight, Loader2, Kubernetes } from 'lucide-react';
+import { Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 

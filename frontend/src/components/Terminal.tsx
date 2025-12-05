@@ -32,7 +32,7 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
       const { FitAddon } = await import('@xterm/addon-fit');
       const { WebLinksAddon } = await import('@xterm/addon-web-links');
       
-      // Import CSS
+      // Import xterm CSS
       await import('@xterm/xterm/css/xterm.css');
 
       if (!terminalRef.current) return;

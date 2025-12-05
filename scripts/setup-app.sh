@@ -43,8 +43,8 @@ if [ ! -f .env ]; then
 
 # Server URLs
 FRONTEND_URL=http://${SERVER_IP}
-NEXT_PUBLIC_API_URL=http://${SERVER_IP}/api
-NEXT_PUBLIC_WS_URL=ws://${SERVER_IP}/ws
+NEXT_PUBLIC_API_URL=http://${SERVER_IP}
+NEXT_PUBLIC_WS_URL=ws://${SERVER_IP}
 
 # JWT Secrets (auto-generated)
 JWT_SECRET=${JWT_SECRET}
@@ -113,9 +113,10 @@ log "🎨 Building frontend..."
 cd frontend
 npm ci 2>/dev/null || npm install
 
-# Set build-time env vars
-export NEXT_PUBLIC_API_URL="http://${SERVER_IP}"
-export NEXT_PUBLIC_WS_URL="ws://${SERVER_IP}"
+# Set build-time env vars from .env
+source $APP_DIR/.env
+export NEXT_PUBLIC_API_URL
+export NEXT_PUBLIC_WS_URL
 
 npm run build
 log "✅ Frontend built"

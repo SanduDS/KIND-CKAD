@@ -122,6 +122,20 @@ export const SessionModel = {
   },
 
   /**
+   * Update session details (kubeconfig, container ID)
+   */
+  updateDetails(id, { kubeconfigPath, terminalContainerId }) {
+    const stmt = db.prepare(`
+      UPDATE sessions 
+      SET kubeconfig_path = COALESCE(?, kubeconfig_path),
+          terminal_container_id = COALESCE(?, terminal_container_id)
+      WHERE id = ?
+    `);
+    stmt.run(kubeconfigPath, terminalContainerId, id);
+    return this.findById(id);
+  },
+
+  /**
    * Add notes to session
    */
   addNotes(id, notes) {
