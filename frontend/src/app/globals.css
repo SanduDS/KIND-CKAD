@@ -1,0 +1,152 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --terminal-bg: #0a0a0f;
+  --terminal-surface: #12121a;
+  --terminal-border: #1e1e2e;
+  --terminal-accent: #00ff9d;
+  --terminal-text: #e4e4e7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+/* Terminal styling */
+.xterm {
+  padding: 12px;
+  height: 100%;
+}
+
+.xterm-viewport {
+  background: var(--terminal-bg) !important;
+}
+
+.xterm-screen {
+  background: var(--terminal-bg) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--terminal-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--terminal-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2e2e3e;
+}
+
+/* Custom focus styles */
+*:focus {
+  outline: none;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--terminal-accent);
+  outline-offset: 2px;
+}
+
+/* Glowing text effect */
+.glow-text {
+  text-shadow: 0 0 10px var(--terminal-accent),
+               0 0 20px var(--terminal-accent),
+               0 0 30px var(--terminal-accent);
+}
+
+/* Glowing border effect */
+.glow-border {
+  box-shadow: 0 0 5px var(--terminal-accent),
+              inset 0 0 5px rgba(0, 255, 157, 0.1);
+}
+
+/* Scanline effect for retro feel */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Markdown code blocks */
+.markdown-body pre {
+  background: var(--terminal-bg) !important;
+  border: 1px solid var(--terminal-border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.markdown-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-body p code {
+  background: var(--terminal-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--terminal-accent);
+}
+
+/* Button hover glow */
+.btn-glow:hover {
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.4);
+}
+
+/* Loading pulse animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Grid background pattern */
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 255, 157, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 157, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
