@@ -119,6 +119,11 @@ export NEXT_PUBLIC_API_URL
 export NEXT_PUBLIC_WS_URL
 
 npm run build
+
+# Copy static files to standalone directory (required for Next.js standalone mode)
+cp -r .next/static .next/standalone/.next/
+cp -r public .next/standalone/ 2>/dev/null || true
+
 log "✅ Frontend built"
 
 cd $APP_DIR

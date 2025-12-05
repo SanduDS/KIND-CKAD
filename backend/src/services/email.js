@@ -107,3 +107,5 @@ export const sendEmail = async (to, subject, html, text) => {
 
 export default { sendOTPEmail, sendEmail };
 
+
+

@@ -32,3 +32,5 @@ find /tmp -name "kind-config-ckad-*" -mmin +120 -delete 2>/dev/null || true
 
 log "Orphan cleanup completed"
 
+
+
