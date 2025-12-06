@@ -148,6 +148,20 @@ export const SessionModel = {
   },
 
   /**
+   * Update task progress for session
+   */
+  updateTaskProgress(id, currentTaskId, completedTasks) {
+    const stmt = db.prepare(`
+      UPDATE sessions 
+      SET current_task_id = ?,
+          completed_tasks = ?
+      WHERE id = ?
+    `);
+    stmt.run(currentTaskId, completedTasks, id);
+    return this.findById(id);
+  },
+
+  /**
    * Delete session (hard delete)
    */
   delete(id) {

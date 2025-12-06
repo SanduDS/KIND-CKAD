@@ -83,6 +83,8 @@ const initSchema = () => {
       kubeconfig_path TEXT,
       terminal_container_id TEXT,
       extended INTEGER DEFAULT 0,
+      current_task_id INTEGER DEFAULT 1,
+      completed_tasks TEXT DEFAULT '[]',
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

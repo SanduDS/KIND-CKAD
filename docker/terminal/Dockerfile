@@ -46,10 +46,13 @@ WORKDIR /root
 # Custom prompt
 RUN echo 'export PS1="\\[\\033[1;32m\\]ckad\\[\\033[0m\\]@\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc
 
-# Welcome message
-RUN echo 'echo "🎯 Welcome to CKAD Practice Environment!"' >> /root/.bashrc \
-    && echo 'echo "   kubectl is ready to use."' >> /root/.bashrc \
-    && echo 'echo "   Type k9s for a TUI experience."' >> /root/.bashrc \
+# Enable readline for proper arrow key support
+RUN echo 'set enable-bracketed-paste off' >> /root/.inputrc \
+    && echo 'set editing-mode emacs' >> /root/.inputrc
+
+# Simple welcome message (questions shown in UI, not terminal)
+RUN echo 'echo "🎯 CKAD Practice Terminal"' >> /root/.bashrc \
+    && echo 'echo "   Ready for kubectl commands."' >> /root/.bashrc \
     && echo 'echo ""' >> /root/.bashrc
 
 # Environment variables

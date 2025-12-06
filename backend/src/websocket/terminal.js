@@ -85,19 +85,17 @@ export function initializeWebSocket(server) {
       }
 
       // Spawn PTY process using node-pty for full terminal support (vim, colors, etc.)
-      // Use 'script' command to create a proper PTY session inside the container
-      // The script command creates a pseudo-terminal which allows vim and other TUI apps to work
+      // Use bash directly with proper terminal settings
       const containerName = `term-${session.cluster_name}`;
       
-      // Try with script command for proper PTY support
+      // Use bash with interactive mode and proper terminal
       ptyProcess = spawn('docker', [
         'exec',
         '-i',
+        '-e', 'TERM=xterm-256color',
         containerName,
-        'script',
-        '-qfc',
         '/bin/bash',
-        '/dev/null'
+        '--login'
       ], {
         name: 'xterm-256color',
         cols: 80,
