@@ -65,10 +65,8 @@ RUN echo 'set nocompatible' >> /root/.vimrc \
     && echo 'set background=dark' >> /root/.vimrc \
     && echo 'set ttimeoutlen=10' >> /root/.vimrc
 
-# Simple welcome message (questions shown in UI, not terminal)
-RUN echo 'echo "🎯 CKAD Practice Terminal"' >> /root/.bashrc \
-    && echo 'echo "   Ready for kubectl commands."' >> /root/.bashrc \
-    && echo 'echo ""' >> /root/.bashrc
+# Simple welcome message - only show once on login
+RUN echo '[ -z "$WELCOME_SHOWN" ] && echo -e "\\033[1;32m🎯 CKAD Practice Terminal\\033[0m" && echo -e "\\033[0;36mReady for kubectl commands\\033[0m" && echo "" && export WELCOME_SHOWN=1' >> /root/.bashrc
 
 # Environment variables
 ENV TERM=xterm-256color

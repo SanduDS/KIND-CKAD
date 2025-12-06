@@ -94,18 +94,24 @@ export function initializeWebSocket(server) {
       }
 
       // Spawn PTY process using node-pty for full terminal support (vim, colors, etc.)
-      // Use bash directly with proper terminal settings
+      // Use script command to create a proper PTY inside the container
       const containerName = `term-${session.cluster_name}`;
       
-      // Use bash with interactive mode and proper terminal
-      // Note: Don't use -t flag with node-pty as it already allocates a PTY
+      // Use 'script' utility to allocate a pseudo-TTY inside the container
+      // This allows vim, nano, and other interactive programs to work correctly
+      // -q: quiet mode (no "Script started" messages)
+      // -f: flush output immediately
+      // -c: run command
+      // /dev/null: don't save typescript file
       ptyProcess = spawn('docker', [
         'exec',
         '-i',
+        '-e', 'TERM=xterm-256color',
         containerName,
-        '/bin/bash',
-        '-l',
-        '-i'
+        'script',
+        '-qfc',
+        '/bin/bash -l',
+        '/dev/null'
       ], {
         name: 'xterm-256color',
         cols: 80,
