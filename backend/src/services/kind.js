@@ -78,7 +78,21 @@ nodes:
       const fixedKubeconfig = kubeconfigContent.replace(/https:\/\/0\.0\.0\.0:/g, 'https://127.0.0.1:');
       await writeFile(kubeconfigPath, fixedKubeconfig);
       
-      logger.info('Generated and fixed kubeconfig', { clusterName, kubeconfigPath });
+      // Create a separate kubeconfig for the terminal container
+      // Terminal container is on the 'kind' network, so it uses the cluster container name
+      const terminalKubeconfigPath = `/tmp/kubeconfig-${clusterName}-terminal`;
+      const terminalKubeconfig = kubeconfigContent.replace(
+        /https:\/\/0\.0\.0\.0:\d+/g, 
+        `https://${clusterName}-control-plane:6443`
+      );
+      await writeFile(terminalKubeconfigPath, terminalKubeconfig);
+      await execAsync(`chmod 600 ${terminalKubeconfigPath}`);
+      
+      logger.info('Generated and fixed kubeconfig', { 
+        clusterName, 
+        kubeconfigPath,
+        terminalKubeconfigPath
+      });
 
       // Validate cluster is ready
       await this.waitForClusterReady(clusterName, kubeconfigPath);
@@ -88,6 +102,7 @@ nodes:
         clusterName,
         configPath,
         kubeconfigPath,
+        terminalKubeconfigPath,
         duration,
       };
     } catch (error) {

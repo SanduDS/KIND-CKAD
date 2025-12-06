@@ -66,10 +66,10 @@ router.post('/start', authenticate, sessionStartLimiter, asyncHandler(async (req
     });
     SessionModel.addNotes(session.id, `Cluster created in ${clusterResult.duration}ms`);
 
-    // Create terminal container
+    // Create terminal container with the terminal-specific kubeconfig
     const terminalResult = await TerminalService.createContainer(
       clusterName, 
-      clusterResult.kubeconfigPath
+      clusterResult.terminalKubeconfigPath || clusterResult.kubeconfigPath
     );
 
     // Update session with terminal container ID
