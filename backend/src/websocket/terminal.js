@@ -79,8 +79,20 @@ export function initializeWebSocket(server) {
       }
 
       // Spawn PTY process using node-pty for full terminal support (vim, colors, etc.)
+      // Use 'script' command to create a proper PTY session inside the container
+      // The script command creates a pseudo-terminal which allows vim and other TUI apps to work
       const containerName = `term-${session.cluster_name}`;
-      ptyProcess = spawn('docker', ['exec', '-it', containerName, '/bin/bash'], {
+      
+      // Try with script command for proper PTY support
+      ptyProcess = spawn('docker', [
+        'exec',
+        '-i',
+        containerName,
+        'script',
+        '-qfc',
+        '/bin/bash',
+        '/dev/null'
+      ], {
         name: 'xterm-256color',
         cols: 80,
         rows: 24,
@@ -91,6 +103,13 @@ export function initializeWebSocket(server) {
       // Store connection
       activeConnections.set(connectionId, { ws, pty: ptyProcess, sessionId });
 
+      // Log PTY creation
+      logger.info('PTY process created', { 
+        sessionId, 
+        containerName,
+        pid: ptyProcess.pid 
+      });
+
       // Handle PTY output -> WebSocket
       ptyProcess.on('data', (data) => {
         if (ws.readyState === ws.OPEN) {
@@ -99,13 +118,33 @@ export function initializeWebSocket(server) {
       });
 
       ptyProcess.on('exit', (exitCode, signal) => {
-        logger.info('PTY process exited', { sessionId, exitCode, signal });
+        const uptime = Date.now() - (ptyProcess._startTime || Date.now());
+        logger.info('PTY process exited', { 
+          sessionId, 
+          exitCode, 
+          signal,
+          uptimeMs: uptime
+        });
+        
+        // If exited too quickly, might be an error
+        if (uptime < 5000 && exitCode !== 0) {
+          logger.error('PTY exited abnormally soon after start', {
+            sessionId,
+            exitCode,
+            signal,
+            uptimeMs: uptime
+          });
+        }
+        
         if (ws.readyState === ws.OPEN) {
           ws.send(JSON.stringify({ type: 'exit', code: exitCode }));
           ws.close(1000, 'Process exited');
         }
         activeConnections.delete(connectionId);
       });
+
+      // Track start time for debugging
+      ptyProcess._startTime = Date.now();
 
       // Handle WebSocket messages -> PTY
       ws.on('message', (message) => {
