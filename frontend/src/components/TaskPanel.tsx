@@ -302,7 +302,12 @@ export default function TaskPanel() {
               <div className="text-sm text-terminal-muted">
                 <p>Score: {verificationResult.score}/{verificationResult.maxScore}</p>
                 <p>Checks Passed: {verificationResult.checksPassed}/{verificationResult.checksTotal}</p>
-                {!verificationResult.passed && (
+                {verificationResult.details && (
+                  <p className="mt-2 text-blue-400 text-xs italic">
+                    ℹ️ {verificationResult.details}
+                  </p>
+                )}
+                {!verificationResult.passed && !verificationResult.details && (
                   <p className="mt-2 text-yellow-400">
                     💡 Review the requirements and try again
                   </p>

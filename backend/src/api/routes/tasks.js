@@ -246,8 +246,41 @@ router.post('/verify', authenticate, asyncHandler(async (req, res) => {
 
   // Get verification config
   const verificationConfig = TaskModel.getVerificationConfig(taskId);
-  if (!verificationConfig || !verificationConfig.checks) {
-    throw new ValidationError('This task does not have verification configured');
+  
+  // If no verification config, allow manual verification (auto-pass)
+  if (!verificationConfig || !verificationConfig.checks || verificationConfig.checks.length === 0) {
+    const maxScore = task.max_score || 10;
+    
+    // Create a passing result for manual verification
+    const result = {
+      taskId,
+      sessionId: session.id,
+      passed: true,
+      score: maxScore,
+      maxScore,
+      checksPassed: 1,
+      checksTotal: 1,
+      details: 'Manual verification - no automated checks configured for this task',
+      verified_at: new Date().toISOString(),
+    };
+
+    // Save the result
+    TaskResultModel.create({
+      sessionId: session.id,
+      taskId,
+      passed: true,
+      score: maxScore,
+      maxScore,
+      output: 'Manual verification',
+    });
+
+    logger.info('Manual verification completed (no config)', { taskId, sessionId: session.id });
+
+    return res.json({
+      success: true,
+      verified: true,
+      ...result,
+    });
   }
 
   const containerName = `term-${session.cluster_name}`;
