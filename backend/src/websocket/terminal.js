@@ -67,6 +67,12 @@ export function initializeWebSocket(server) {
 
       logger.info('WebSocket connection established', { userId, sessionId });
 
+      // Initialize WebSocket heartbeat
+      ws.isAlive = true;
+      ws.on('pong', () => {
+        ws.isAlive = true;
+      });
+
       // Store connection
       const connectionId = `${userId}-${sessionId}`;
       if (activeConnections.has(connectionId)) {
