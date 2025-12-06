@@ -92,7 +92,16 @@ success "Node.js installed: $(node -v)"
 # =========================================
 log "Phase 2: Application Setup"
 
+# Create app directory if it doesn't exist
+mkdir -p $APP_DIR
 cd $APP_DIR
+
+# Check if repo is cloned (look for package.json in backend)
+if [ ! -f "backend/package.json" ]; then
+    error "Repository not found in $APP_DIR. Please clone first:
+    git clone https://github.com/SanduDS/KIND-CKAD.git $APP_DIR"
+fi
+
 mkdir -p data backups
 
 # Create .env if not exists
