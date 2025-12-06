@@ -1,7 +1,15 @@
 // Use relative URLs in production (same domain), absolute in dev
-const API_URL = typeof window !== 'undefined' 
-  ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
-  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
+// Normalize API_URL to remove trailing /api if present (to avoid double /api/api)
+const getApiUrl = () => {
+  const baseUrl = typeof window !== 'undefined' 
+    ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
+  
+  // Remove trailing /api if present to avoid double /api/api
+  return baseUrl.replace(/\/api\/?$/, '');
+};
+
+const API_URL = getApiUrl();
 
 // Helper to get auth headers
 function getAuthHeaders(): HeadersInit {
