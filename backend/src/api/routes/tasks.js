@@ -268,10 +268,14 @@ router.post('/verify', authenticate, asyncHandler(async (req, res) => {
     TaskResultModel.create({
       sessionId: session.id,
       taskId,
+      userId: userId,
       passed: true,
       score: maxScore,
       maxScore,
-      output: 'Manual verification',
+      checksPassed: 1,
+      checksTotal: 1,
+      verificationOutput: 'Manual verification - no automated checks configured',
+      verificationDetails: [],
     });
 
     logger.info('Manual verification completed (no config)', { taskId, sessionId: session.id });
