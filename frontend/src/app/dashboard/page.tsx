@@ -99,7 +99,10 @@ export default function DashboardPage() {
     try {
       setIsStarting(true);
       setError(null);
+      
+      console.log('Starting session...');
       const result = await sessionApi.start();
+      console.log('Session start result:', result);
 
       if (result.success) {
         setSession({
@@ -113,12 +116,15 @@ export default function DashboardPage() {
         });
         toast.success('Practice session started!');
       } else {
-        setError(result.message || 'Failed to start session');
-        toast.error(result.message || 'Failed to start session');
+        const errorMsg = result.message || result.error || 'Failed to start session';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to start session');
-      toast.error(err.message || 'Failed to start session');
+      console.error('Session start error:', err);
+      const errorMsg = err.message || 'Failed to start session. Check console for details.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsStarting(false);
     }

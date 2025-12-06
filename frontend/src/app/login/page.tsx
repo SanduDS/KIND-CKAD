@@ -10,12 +10,35 @@ import { useAuthStore } from '@/lib/store';
 export default function LoginPage() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [mounted, setMounted] = useState(false);
   
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Wait for hydration and check auth
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [mounted, isAuthenticated, router]);
+
+  // Show loading during hydration or if authenticated
+  if (!mounted || isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-terminal-bg">
+        <div className="w-8 h-8 border-2 border-terminal-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleTestLogin = async (e: React.FormEvent) => {
     e.preventDefault();

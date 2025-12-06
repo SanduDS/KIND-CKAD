@@ -1,21 +1,35 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 
 export default function Home() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    } else {
-      router.push('/login');
-    }
-  }, [isAuthenticated, router]);
+    // Wait for client-side hydration
+    setMounted(true);
+  }, []);
 
+  useEffect(() => {
+    if (!mounted) return;
+    
+    // Redirect after hydration
+    const timer = setTimeout(() => {
+      if (isAuthenticated) {
+        router.replace('/dashboard');
+      } else {
+        router.replace('/login');
+      }
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [mounted, isAuthenticated, router]);
+
+  // Show loading during hydration
   return (
     <div className="min-h-screen flex items-center justify-center bg-terminal-bg">
       <div className="animate-pulse-glow">

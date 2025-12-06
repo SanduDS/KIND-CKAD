@@ -1,0 +1,25 @@
+[Unit]
+Description=CKAD Platform Backend API
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ckad-platform/backend
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/ckad-platform/.env
+ExecStartPre=/opt/ckad-platform/scripts/cleanup-orphans.sh
+ExecStart=/usr/bin/node src/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Graceful shutdown
+TimeoutStopSec=30
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+

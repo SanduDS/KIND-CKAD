@@ -1,0 +1,21 @@
+[Unit]
+Description=CKAD Platform Frontend (Next.js)
+After=network.target ckad-backend.service
+Wants=ckad-backend.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ckad-platform/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

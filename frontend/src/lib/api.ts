@@ -34,6 +34,19 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     headers,
   });
 
+  // Check if response is JSON
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text();
+    console.error('Non-JSON response:', { 
+      status: response.status, 
+      contentType,
+      url: `${API_URL}${endpoint}`,
+      preview: text.substring(0, 200)
+    });
+    throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+  }
+
   // Handle token expiry
   if (response.status === 401) {
     const data = await response.json();
@@ -95,12 +108,26 @@ async function refreshAccessToken(): Promise<boolean> {
 export const authApi = {
   // Test login (hardcoded credentials)
   async testLogin(email: string, password: string) {
-    const response = await fetch(`${API_URL}/api/auth/test-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    return response.json();
+    try {
+      const response = await fetch(`${API_URL}/api/auth/test-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      // Check content type
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Login API returned HTML:', text.substring(0, 200));
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      console.error('Login request failed:', error);
+      throw error;
+    }
   },
 
   // Send OTP to email
@@ -148,32 +175,87 @@ export const authApi = {
 export const sessionApi = {
   // Start session
   async start() {
-    const response = await fetchWithAuth('/api/session/start', {
-      method: 'POST',
-    });
-    return response.json();
+    try {
+      const response = await fetchWithAuth('/api/session/start', {
+        method: 'POST',
+      });
+
+      // Check content type
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Session start returned HTML:', {
+          status: response.status,
+          contentType,
+          preview: text.substring(0, 300)
+        });
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+
+      const data = await response.json();
+      
+      // Check if response indicates an error
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP ${response.status}: ${data.error || 'Unknown error'}`);
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error('Session start failed:', error);
+      throw error;
+    }
   },
 
   // Get session status
   async status() {
-    const response = await fetchWithAuth('/api/session/status');
-    return response.json();
+    try {
+      const response = await fetchWithAuth('/api/session/status');
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Session status failed:', error);
+      throw error;
+    }
   },
 
   // Extend session
   async extend() {
-    const response = await fetchWithAuth('/api/session/extend', {
-      method: 'POST',
-    });
-    return response.json();
+    try {
+      const response = await fetchWithAuth('/api/session/extend', {
+        method: 'POST',
+      });
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Session extend failed:', error);
+      throw error;
+    }
   },
 
   // Stop session
   async stop() {
-    const response = await fetchWithAuth('/api/session/stop', {
-      method: 'POST',
-    });
-    return response.json();
+    try {
+      const response = await fetchWithAuth('/api/session/stop', {
+        method: 'POST',
+      });
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Session stop failed:', error);
+      throw error;
+    }
   },
 };
 
