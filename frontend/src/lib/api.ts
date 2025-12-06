@@ -47,6 +47,42 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 
+// Helper to construct API URLs safely (prevents double /api)
+// This function ensures we NEVER have /api/api in the final URL
+const buildApiUrl = (endpoint: string): string => {
+  // Ensure endpoint starts with /
+  if (!endpoint.startsWith('/')) {
+    endpoint = '/' + endpoint;
+  }
+  
+  // If API_URL is empty (relative URLs), just return the endpoint
+  // This is the normal case in production (same domain)
+  if (!API_URL || API_URL === '') {
+    return endpoint;
+  }
+  
+  // API_URL is set (different origin, e.g., local dev)
+  // Clean the base URL - remove any trailing /api or slashes
+  let baseUrl = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  
+  // Combine baseUrl and endpoint
+  let url = `${baseUrl}${endpoint}`;
+  
+  // Remove any double slashes (but preserve http:// or https://)
+  url = url.replace(/([^:]\/)\/+/g, '$1');
+  
+  // CRITICAL: Remove any /api/api patterns (this is the main fix)
+  url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
+  
+  // Additional safety: if baseUrl somehow had /api and endpoint has /api, fix it
+  // This handles edge cases where NEXT_PUBLIC_API_URL was set incorrectly
+  while (url.includes('/api/api')) {
+    url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
+  }
+  
+  return url;
+};
+
 // Debug logging (always log in browser for troubleshooting)
 if (typeof window !== 'undefined') {
   console.log('[API Config] Base URL:', API_URL || '(relative - same origin)');
@@ -160,42 +196,6 @@ async function refreshAccessToken(): Promise<boolean> {
 }
 
 // ============ Auth API ============
-
-// Helper to construct API URLs safely (prevents double /api)
-// This function ensures we NEVER have /api/api in the final URL
-const buildApiUrl = (endpoint: string): string => {
-  // Ensure endpoint starts with /
-  if (!endpoint.startsWith('/')) {
-    endpoint = '/' + endpoint;
-  }
-  
-  // If API_URL is empty (relative URLs), just return the endpoint
-  // This is the normal case in production (same domain)
-  if (!API_URL || API_URL === '') {
-    return endpoint;
-  }
-  
-  // API_URL is set (different origin, e.g., local dev)
-  // Clean the base URL - remove any trailing /api or slashes
-  let baseUrl = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
-  
-  // Combine baseUrl and endpoint
-  let url = `${baseUrl}${endpoint}`;
-  
-  // Remove any double slashes (but preserve http:// or https://)
-  url = url.replace(/([^:]\/)\/+/g, '$1');
-  
-  // CRITICAL: Remove any /api/api patterns (this is the main fix)
-  url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
-  
-  // Additional safety: if baseUrl somehow had /api and endpoint has /api, fix it
-  // This handles edge cases where NEXT_PUBLIC_API_URL was set incorrectly
-  while (url.includes('/api/api')) {
-    url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
-  }
-  
-  return url;
-};
 
 export const authApi = {
   // Test login (hardcoded credentials)
