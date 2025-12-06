@@ -44,7 +44,9 @@ RUN mkdir -p /root/.kube
 WORKDIR /root
 
 # Custom prompt for kubectl practice - clean and simple
-RUN echo 'export PS1="\\[\\033[1;32m\\]kubectl\\[\\033[0m\\]:\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc
+RUN echo 'export PS1="\\[\\033[1;32m\\]kubectl\\[\\033[0m\\]:\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc \
+    && echo 'export TERM=xterm-256color' >> /root/.bashrc \
+    && echo 'export COLORTERM=truecolor' >> /root/.bashrc
 
 # Enable readline for proper arrow key support and vim compatibility
 RUN echo 'set enable-bracketed-paste off' >> /root/.inputrc \

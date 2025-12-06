@@ -102,11 +102,10 @@ export function initializeWebSocket(server) {
       ptyProcess = spawn('docker', [
         'exec',
         '-i',
-        '-e', 'TERM=xterm-256color',
-        '-e', 'COLORTERM=truecolor',
         containerName,
         '/bin/bash',
-        '--login'
+        '-l',
+        '-i'
       ], {
         name: 'xterm-256color',
         cols: 80,
@@ -127,16 +126,6 @@ export function initializeWebSocket(server) {
         containerName,
         pid: ptyProcess.pid 
       });
-
-      // Send welcome message after PTY is ready
-      setTimeout(() => {
-        if (ws.readyState === ws.OPEN) {
-          ws.send(JSON.stringify({ 
-            type: 'connected', 
-            message: 'Terminal connected. Type commands to interact with your Kubernetes cluster.' 
-          }));
-        }
-      }, 500);
 
       // Handle PTY output -> WebSocket
       ptyProcess.on('data', (data) => {
@@ -228,13 +217,6 @@ export function initializeWebSocket(server) {
       ws.on('error', (error) => {
         logger.error('WebSocket error', { userId, sessionId, error: error.message });
       });
-
-      // Send connected message
-      ws.send(JSON.stringify({ 
-        type: 'connected', 
-        sessionId,
-        message: 'Terminal connected. Type commands to interact with your Kubernetes cluster.' 
-      }));
 
     } catch (error) {
       logger.error('WebSocket connection error', { error: error.message });
