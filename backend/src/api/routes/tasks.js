@@ -64,6 +64,7 @@ router.get('/:id', authenticate, asyncHandler(async (req, res) => {
 /**
  * GET /api/tasks/session/current
  * Get current task for active session (CKAD exam-style: one at a time)
+ * Only shows tasks assigned to this session (20 random tasks)
  */
 router.get('/session/current', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
@@ -74,21 +75,27 @@ router.get('/session/current', authenticate, asyncHandler(async (req, res) => {
     throw new NotFoundError('No active session found');
   }
 
-  // Get user's task progress from session
-  const currentTaskId = session.current_task_id || 1;
-  const completedTasks = session.completed_tasks ? JSON.parse(session.completed_tasks) : [];
+  // Get assigned tasks for this session
+  const { assigned, completed } = SessionModel.getAssignedTasks(session.id);
+  
+  if (assigned.length === 0) {
+    throw new NotFoundError('No tasks assigned to this session');
+  }
+
+  // Get current task index (next uncompleted task)
+  const currentIndex = session.current_task_id ? session.current_task_id - 1 : 0;
+  const currentTaskId = assigned[currentIndex];
   
   const task = TaskModel.findById(currentTaskId);
   if (!task) {
     throw new NotFoundError('Task not found');
   }
 
-  const allTasks = TaskModel.findAll();
   const progress = {
-    current: currentTaskId,
-    total: allTasks.length,
-    completed: completedTasks.length,
-    percentage: Math.round((completedTasks.length / allTasks.length) * 100)
+    current: currentIndex + 1,
+    total: assigned.length, // Always 20 for CKAD exam
+    completed: completed.length,
+    percentage: Math.round((completed.length / assigned.length) * 100)
   };
 
   res.json({
@@ -100,11 +107,15 @@ router.get('/session/current', authenticate, asyncHandler(async (req, res) => {
 
 /**
  * POST /api/tasks/session/complete
- * Mark current task as complete and move to next
+ * Mark current task as complete and move to next (within assigned 20 tasks)
  */
 router.post('/session/complete', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { taskId } = req.body;
+  
+  if (!taskId) {
+    throw new ValidationError('taskId is required');
+  }
   
   // Get active session
   const session = SessionModel.findActiveByUserId(userId);
@@ -112,32 +123,46 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
     throw new NotFoundError('No active session found');
   }
 
-  const completedTasks = session.completed_tasks ? JSON.parse(session.completed_tasks) : [];
+  const { assigned, completed } = SessionModel.getAssignedTasks(session.id);
+  
+  if (assigned.length === 0) {
+    throw new NotFoundError('No tasks assigned to this session');
+  }
+  
+  // Validate that this is the current task (no skipping ahead)
+  const currentIndex = session.current_task_id ? session.current_task_id - 1 : 0;
+  const expectedTaskId = assigned[currentIndex];
+  
+  if (taskId !== expectedTaskId) {
+    throw new ValidationError(
+      `Cannot complete task ${taskId}. Current task is ${expectedTaskId} (Question ${currentIndex + 1})`
+    );
+  }
   
   // Add current task to completed if not already there
-  if (!completedTasks.includes(taskId)) {
-    completedTasks.push(taskId);
+  if (!completed.includes(taskId)) {
+    completed.push(taskId);
   }
 
-  // Get all tasks to find next one
-  const allTasks = TaskModel.findAll();
-  const nextTaskId = taskId + 1;
+  // Move to next task
+  const nextIndex = currentIndex + 1;
   
-  // Update session with progress
-  SessionModel.updateTaskProgress(session.id, nextTaskId, JSON.stringify(completedTasks));
+  // Update session with new current task index and completed list
+  const taskData = JSON.stringify({ assigned, completed });
+  SessionModel.updateTaskProgress(session.id, nextIndex + 1, taskData);
 
-  const hasMore = nextTaskId <= allTasks.length;
-  const nextTask = hasMore ? TaskModel.findById(nextTaskId) : null;
+  const hasMore = nextIndex < assigned.length;
+  const nextTask = hasMore ? TaskModel.findById(assigned[nextIndex]) : null;
 
   res.json({
     success: true,
-    message: hasMore ? 'Task completed! Moving to next question.' : 'All tasks completed!',
+    message: hasMore ? 'Task completed! Moving to next question.' : 'All tasks completed! 🎉',
     nextTask: hasMore ? nextTask : null,
     progress: {
-      current: nextTaskId,
-      total: allTasks.length,
-      completed: completedTasks.length,
-      percentage: Math.round((completedTasks.length / allTasks.length) * 100)
+      current: hasMore ? nextIndex + 1 : assigned.length, // Current question number
+      total: assigned.length,
+      completed: completed.length,
+      percentage: Math.round((completed.length / assigned.length) * 100)
     }
   });
 }));

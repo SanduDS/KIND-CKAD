@@ -44,24 +44,33 @@ export function initializeWebSocket(server) {
         authResult = authenticateWebSocket(token);
         userId = authResult.userId;
       } catch (error) {
-        ws.close(4003, 'Authentication failed');
+        // Distinguish between expired and invalid tokens
+        const isExpired = error.name === 'TokenExpiredError';
+        const closeCode = isExpired ? 4003 : 4004;
+        const closeReason = isExpired ? 'Token expired - refresh required' : 'Authentication failed';
+        logger.warn('WebSocket authentication failed', { 
+          error: error.message, 
+          errorType: error.name,
+          isExpired 
+        });
+        ws.close(closeCode, closeReason);
         return;
       }
 
       // Verify session ownership
       const session = SessionModel.findById(sessionId);
       if (!session) {
-        ws.close(4004, 'Session not found');
+        ws.close(4005, 'Session not found');
         return;
       }
 
       if (session.user_id !== userId) {
-        ws.close(4005, 'Access denied');
+        ws.close(4006, 'Access denied');
         return;
       }
 
       if (session.status !== 'started') {
-        ws.close(4006, 'Session not active');
+        ws.close(4007, 'Session not active');
         return;
       }
 
@@ -78,7 +87,7 @@ export function initializeWebSocket(server) {
       if (activeConnections.has(connectionId)) {
         // Close existing connection
         const existing = activeConnections.get(connectionId);
-        existing.ws.close(4007, 'New connection');
+        existing.ws.close(4008, 'New connection');
         if (existing.pty) {
           existing.pty.kill();
         }

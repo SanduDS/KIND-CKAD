@@ -43,8 +43,9 @@ RUN mkdir -p /root/.kube
 # Set working directory
 WORKDIR /root
 
-# Custom prompt
-RUN echo 'export PS1="\\[\\033[1;32m\\]ckad\\[\\033[0m\\]@\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc
+# Custom prompt with clear command separation
+RUN echo 'export PS1="\\[\\033[1;32m\\]ckad\\[\\033[0m\\]@\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc \
+    && echo 'export PROMPT_COMMAND="echo -ne \"\\033[90m────────────────────────────────────────\\033[0m\\n\""' >> /root/.bashrc
 
 # Enable readline for proper arrow key support
 RUN echo 'set enable-bracketed-paste off' >> /root/.inputrc \

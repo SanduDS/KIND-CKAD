@@ -255,9 +255,8 @@ export default function DashboardPage() {
               </div>
               <h2 className="text-2xl font-bold mb-3">Ready to Practice?</h2>
               <p className="text-terminal-muted mb-8">
-                Start a new practice session to get your own Kubernetes cluster.
-                You'll have {platformStatus?.sessionConfig?.defaultTTLMinutes || 60} minutes
-                to complete tasks.
+                Start a new CKAD practice session. You'll get 20 random questions to complete 
+                in {platformStatus?.sessionConfig?.defaultTTLMinutes || 60} minutes, just like the real exam.
               </p>
 
               {error && (
@@ -297,37 +296,37 @@ export default function DashboardPage() {
               {/* Info cards */}
               <div className="grid grid-cols-3 gap-4 mt-12 text-left">
                 <div className="p-4 bg-terminal-surface rounded-xl border border-terminal-border">
+                  <div className="text-2xl font-bold text-terminal-accent mb-1">20</div>
+                  <div className="text-xs text-terminal-muted">Random questions</div>
+                </div>
+                <div className="p-4 bg-terminal-surface rounded-xl border border-terminal-border">
                   <div className="text-2xl font-bold text-terminal-accent mb-1">
                     {platformStatus?.sessionConfig?.defaultTTLMinutes || 60}
                   </div>
-                  <div className="text-xs text-terminal-muted">Minutes per session</div>
-                </div>
-                <div className="p-4 bg-terminal-surface rounded-xl border border-terminal-border">
-                  <div className="text-2xl font-bold text-terminal-accent mb-1">15+</div>
-                  <div className="text-xs text-terminal-muted">Practice tasks</div>
+                  <div className="text-xs text-terminal-muted">Minutes to complete</div>
                 </div>
                 <div className="p-4 bg-terminal-surface rounded-xl border border-terminal-border">
                   <div className="text-2xl font-bold text-terminal-accent mb-1">1</div>
-                  <div className="text-xs text-terminal-muted">Full K8s cluster</div>
+                  <div className="text-xs text-terminal-muted">K8s cluster</div>
                 </div>
               </div>
             </div>
           </div>
         ) : (
-          // Active Session - Show Terminal + Tasks
+          // Active Session - Show Question + Terminal Side by Side
           <div className="flex-1 flex gap-4 overflow-hidden">
-            {/* Left: Terminal */}
+            {/* Left: Question Panel */}
+            <div className="w-[480px] flex-shrink-0">
+              <TaskPanel />
+            </div>
+
+            {/* Right: Terminal */}
             <div className="flex-1 min-w-0">
               <Terminal
                 sessionId={session.id}
                 wsUrl={`/ws/terminal?sessionId=${session.id}`}
                 accessToken={accessToken!}
               />
-            </div>
-
-            {/* Right: Tasks Panel */}
-            <div className="w-[480px] flex-shrink-0 hidden lg:block">
-              <TaskPanel />
             </div>
           </div>
         )}

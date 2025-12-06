@@ -61,7 +61,7 @@ export const SessionModel = {
   },
 
   /**
-   * Create a new session
+   * Create a new session with random task assignment
    */
   create({ userId, clusterName, kubeconfigPath, terminalContainerId }) {
     const id = uuidv4();
@@ -84,6 +84,42 @@ export const SessionModel = {
 
     logger.info('Created new session', { sessionId: id, userId, clusterName });
     return this.findById(id);
+  },
+
+  /**
+   * Assign random tasks to session (CKAD exam style - 20 random questions)
+   */
+  assignRandomTasks(id, taskIds) {
+    const stmt = db.prepare(`
+      UPDATE sessions 
+      SET completed_tasks = ?
+      WHERE id = ?
+    `);
+    // Store assigned task IDs in a special format: {"assigned":[...],"completed":[]}
+    const taskData = JSON.stringify({ assigned: taskIds, completed: [] });
+    stmt.run(taskData, id);
+    return this.findById(id);
+  },
+
+  /**
+   * Get assigned tasks for session
+   */
+  getAssignedTasks(id) {
+    const session = this.findById(id);
+    if (!session || !session.completed_tasks) {
+      return { assigned: [], completed: [] };
+    }
+    try {
+      const taskData = JSON.parse(session.completed_tasks);
+      // Old format: just array of completed IDs
+      if (Array.isArray(taskData)) {
+        return { assigned: [], completed: taskData };
+      }
+      // New format: {assigned: [], completed: []}
+      return taskData;
+    } catch {
+      return { assigned: [], completed: [] };
+    }
   },
 
   /**

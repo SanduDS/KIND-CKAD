@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import config from '../../config/index.js';
 import SessionModel from '../../models/session.js';
+import TaskModel from '../../models/task.js';
 import PortModel from '../../models/port.js';
 import KindService from '../../services/kind.js';
 import TerminalService from '../../services/terminal.js';
@@ -76,6 +77,25 @@ router.post('/start', authenticate, sessionStartLimiter, asyncHandler(async (req
     SessionModel.updateDetails(session.id, { 
       terminalContainerId: terminalResult.containerId 
     });
+
+    // Assign random 20 tasks for CKAD exam (like real exam)
+    try {
+      const examTasks = TaskModel.getRandomExamTasks(20);
+      const taskIds = examTasks.map(task => task.id);
+      SessionModel.assignRandomTasks(session.id, taskIds);
+      logger.info('Assigned random exam tasks', { 
+        sessionId: session.id, 
+        taskCount: taskIds.length,
+        taskIds 
+      });
+    } catch (error) {
+      logger.error('Failed to assign tasks to session', { 
+        sessionId: session.id, 
+        error: error.message 
+      });
+      // Continue anyway - tasks can be added later
+      // Don't fail session creation just because of insufficient tasks
+    }
 
     // Get session with time info
     const sessionWithTime = SessionModel.getWithTimeInfo(session.id);

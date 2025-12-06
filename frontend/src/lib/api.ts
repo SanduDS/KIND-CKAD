@@ -377,7 +377,7 @@ export const sessionApi = {
 // ============ Tasks API ============
 
 export const tasksApi = {
-  // Get all tasks
+  // Get all tasks (admin/browse - not used in CKAD exam mode)
   async list(difficulty?: string, category?: string) {
     const params = new URLSearchParams();
     if (difficulty) params.append('difficulty', difficulty);
@@ -388,15 +388,32 @@ export const tasksApi = {
     return response.json();
   },
 
-  // Get task by ID
+  // Get task by ID (admin/browse - not used in CKAD exam mode)
   async get(id: number) {
     const response = await fetchWithAuth(`/api/tasks/${id}`);
     return response.json();
   },
 
-  // Get categories
+  // Get categories (admin/browse - not used in CKAD exam mode)
   async categories() {
     const response = await fetchWithAuth('/api/tasks/categories');
+    return response.json();
+  },
+
+  // ===== CKAD Exam Mode Endpoints =====
+
+  // Get current task for active session (CKAD exam style - one at a time)
+  async getCurrent() {
+    const response = await fetchWithAuth('/api/tasks/session/current');
+    return response.json();
+  },
+
+  // Complete current task and get next (CKAD exam progression)
+  async complete(taskId: number) {
+    const response = await fetchWithAuth('/api/tasks/session/complete', {
+      method: 'POST',
+      body: JSON.stringify({ taskId }),
+    });
     return response.json();
   },
 };

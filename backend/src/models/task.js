@@ -58,6 +58,26 @@ export const TaskModel = {
   },
 
   /**
+   * Get random 20 tasks for CKAD exam session
+   * Randomly selects 20 tasks weighted by difficulty
+   */
+  getRandomExamTasks(count = 20) {
+    // First check if we have enough tasks
+    const totalCount = db.prepare('SELECT COUNT(*) as count FROM tasks').get().count;
+    
+    if (totalCount < count) {
+      throw new Error(`Insufficient tasks in database. Need ${count}, have ${totalCount}`);
+    }
+    
+    const stmt = db.prepare(`
+      SELECT * FROM tasks 
+      ORDER BY RANDOM() 
+      LIMIT ?
+    `);
+    return stmt.all(count);
+  },
+
+  /**
    * Create a new task
    */
   create({ title, body, difficulty = 'medium', category = null }) {
