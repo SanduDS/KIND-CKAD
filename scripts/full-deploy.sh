@@ -154,21 +154,61 @@ NEXT_PUBLIC_API_URL=https://$DOMAIN/api
 NEXT_PUBLIC_WS_URL=wss://$DOMAIN
 EOF
 npm install --legacy-peer-deps
+
+# Clean previous build
+rm -rf .next
+log "Building Next.js (this may take a few minutes)..."
 npm run build
+
+# Verify build completed
+if [ ! -d ".next/standalone" ]; then
+    error "Next.js standalone build failed - .next/standalone not found"
+fi
 
 # Copy static files to standalone (REQUIRED for Next.js standalone mode)
 log "Copying static files to standalone..."
+# Next.js standalone expects: .next/standalone/.next/static
 mkdir -p .next/standalone/.next
-cp -r .next/static .next/standalone/.next/static
-if [ -d "public" ]; then
-    cp -r public .next/standalone/public
-fi
-# Verify static files exist
-if [ -d ".next/standalone/.next/static" ]; then
-    success "Frontend built (static files copied)"
+
+if [ -d ".next/static" ]; then
+    # Use rsync if available for better copying, otherwise cp
+    if command -v rsync &> /dev/null; then
+        rsync -av .next/static/ .next/standalone/.next/static/
+    else
+        cp -r .next/static/* .next/standalone/.next/static/ 2>/dev/null || cp -r .next/static .next/standalone/.next/static
+    fi
+    log "Copied .next/static to standalone"
 else
-    error "Static files not copied correctly"
+    error ".next/static directory not found after build"
 fi
+
+# Copy public folder if it exists
+if [ -d "public" ]; then
+    cp -r public .next/standalone/public 2>/dev/null || true
+    log "Copied public folder to standalone"
+fi
+
+# Verify critical files exist
+if [ ! -d ".next/standalone/.next/static" ]; then
+    error "Static files not copied - .next/standalone/.next/static missing"
+fi
+
+if [ ! -f ".next/standalone/server.js" ]; then
+    error "server.js not found in standalone directory"
+fi
+
+# Verify chunks directory exists (where the failing files should be)
+if [ ! -d ".next/standalone/.next/static/chunks" ]; then
+    error "Chunks directory missing - static files not copied correctly"
+fi
+
+# Count chunks to verify
+CHUNK_COUNT=$(find .next/standalone/.next/static/chunks -name "*.js" 2>/dev/null | wc -l)
+if [ "$CHUNK_COUNT" -lt 5 ]; then
+    warn "Only $CHUNK_COUNT JS chunks found (expected more)"
+fi
+
+success "Frontend built ($CHUNK_COUNT chunks, static files copied)"
 
 # Seed database
 log "Initializing database..."
