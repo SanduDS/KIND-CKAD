@@ -62,7 +62,7 @@ nodes:
 
       const { stdout, stderr } = await execAsync(
         `kind create cluster --name ${clusterName} --config ${configPath}`,
-        { timeout: 120000 } // 2 minute timeout
+        { timeout: 180000 } // 3 minute timeout (increased from 2 minutes)
       );
 
       const duration = Date.now() - startTime;
@@ -99,29 +99,70 @@ nodes:
   /**
    * Wait for cluster to be ready
    */
-  async waitForClusterReady(clusterName, kubeconfigPath, maxAttempts = 30) {
+  async waitForClusterReady(clusterName, kubeconfigPath, maxAttempts = 60) {
     logger.info('Waiting for cluster to be ready...', { clusterName });
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
+        // First check if the cluster exists
+        const { stdout: clusterList } = await execAsync(
+          `kind get clusters`,
+          { timeout: 10000 }
+        );
+
+        if (!clusterList.includes(clusterName)) {
+          logger.error('Cluster not found in kind cluster list', { clusterName });
+          throw new Error('Cluster not found');
+        }
+
+        // Check node status
         const { stdout } = await execAsync(
-          `KUBECONFIG=${kubeconfigPath} kubectl get nodes --request-timeout=10s`,
+          `KUBECONFIG=${kubeconfigPath} kubectl get nodes -o wide --request-timeout=10s`,
           { timeout: 15000 }
         );
 
-        if (stdout.includes('Ready')) {
-          logger.info('Cluster is ready', { clusterName, attempt });
-          return true;
+        // Check if node is Ready and not in NotReady state
+        const lines = stdout.split('\n');
+        const nodeLines = lines.filter(line => line.includes('control-plane'));
+        
+        if (nodeLines.length > 0) {
+          const nodeStatus = nodeLines[0];
+          // Check for Ready status and ensure it's not NotReady
+          if (nodeStatus.includes('Ready') && !nodeStatus.includes('NotReady')) {
+            logger.info('Cluster is ready', { clusterName, attempt, nodeStatus: nodeStatus.trim() });
+            
+            // Additional validation: check if system pods are running
+            try {
+              const { stdout: podStatus } = await execAsync(
+                `KUBECONFIG=${kubeconfigPath} kubectl get pods -n kube-system --request-timeout=10s`,
+                { timeout: 15000 }
+              );
+              
+              // Count running pods
+              const runningPods = (podStatus.match(/Running/g) || []).length;
+              logger.info('System pods status', { clusterName, runningPods });
+              
+              // If we have at least a few critical pods running, consider it ready
+              if (runningPods >= 3) {
+                logger.info('Cluster fully ready with system pods', { clusterName, runningPods });
+                return true;
+              }
+            } catch (podError) {
+              // Pods not ready yet, but node is ready - continue waiting
+              logger.debug('System pods not ready yet', { clusterName, attempt });
+            }
+          }
         }
       } catch (error) {
         logger.debug('Cluster not ready yet', { 
           clusterName, 
           attempt, 
+          maxAttempts,
           error: error.message 
         });
       }
 
-      // Wait before next attempt
+      // Wait before next attempt (2 seconds)
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
