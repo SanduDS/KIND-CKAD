@@ -91,14 +91,14 @@ export function initializeWebSocket(server) {
       // Store connection
       activeConnections.set(connectionId, { ws, pty: ptyProcess, sessionId });
 
-      // Handle PTY output -> WebSocket (node-pty uses onData instead of stdout.on)
-      ptyProcess.onData((data) => {
+      // Handle PTY output -> WebSocket
+      ptyProcess.on('data', (data) => {
         if (ws.readyState === ws.OPEN) {
           ws.send(JSON.stringify({ type: 'output', data }));
         }
       });
 
-      ptyProcess.onExit(({ exitCode, signal }) => {
+      ptyProcess.on('exit', (exitCode, signal) => {
         logger.info('PTY process exited', { sessionId, exitCode, signal });
         if (ws.readyState === ws.OPEN) {
           ws.send(JSON.stringify({ type: 'exit', code: exitCode }));
