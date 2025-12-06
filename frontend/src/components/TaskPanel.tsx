@@ -368,10 +368,6 @@ export default function TaskPanel() {
             </>
           )}
         </button>
-      </div>
-            </>
-          )}
-        </button>
 
         <p className="text-xs text-terminal-muted text-center mt-3">
           <Clock className="w-3 h-3 inline mr-1" />
