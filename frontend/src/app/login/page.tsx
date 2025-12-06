@@ -13,8 +13,30 @@ export default function LoginPage() {
   
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const handleTestLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) return;
+
+    setIsLoading(true);
+    try {
+      const result = await authApi.testLogin(email, password);
+      if (result.success) {
+        setAuth(result.user, result.accessToken, result.refreshToken);
+        toast.success('Login successful!');
+        router.push('/dashboard');
+      } else {
+        toast.error(result.message || 'Invalid credentials');
+      }
+    } catch (error) {
+      toast.error('Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +116,14 @@ export default function LoginPage() {
                 Sign in to your account
               </h2>
 
-              <form onSubmit={handleSendOTP} className="space-y-4">
+              {/* Test Login Note */}
+              <div className="bg-terminal-accent/10 border border-terminal-accent/30 rounded-lg p-3 mb-4">
+                <p className="text-xs text-terminal-accent">
+                  🧪 Test Login: test@ckad.com / test123
+                </p>
+              </div>
+
+              <form onSubmit={handleTestLogin} className="space-y-4">
                 <div>
                   <label className="block text-sm text-terminal-muted mb-2">
                     Email address
@@ -105,23 +134,37 @@ export default function LoginPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder="test@ckad.com"
                       className="w-full pl-12 pr-4 py-3 bg-terminal-bg border border-terminal-border rounded-xl text-terminal-text placeholder-terminal-muted focus:border-terminal-accent focus:ring-1 focus:ring-terminal-accent transition-all"
                       required
                     />
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm text-terminal-muted mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password"
+                    className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded-xl text-terminal-text placeholder-terminal-muted focus:border-terminal-accent focus:ring-1 focus:ring-terminal-accent transition-all"
+                    required
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={isLoading || !email}
+                  disabled={isLoading || !email || !password}
                   className="w-full py-3 bg-terminal-accent text-terminal-bg font-semibold rounded-xl hover:bg-terminal-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-glow flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      Continue with Email
+                      Sign In
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}

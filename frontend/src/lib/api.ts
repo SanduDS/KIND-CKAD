@@ -90,6 +90,16 @@ async function refreshAccessToken(): Promise<boolean> {
 // ============ Auth API ============
 
 export const authApi = {
+  // Test login (hardcoded credentials)
+  async testLogin(email: string, password: string) {
+    const response = await fetch(`${API_URL}/api/auth/test-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    return response.json();
+  },
+
   // Send OTP to email
   async sendOTP(email: string) {
     const response = await fetch(`${API_URL}/api/auth/email/otp`, {

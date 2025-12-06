@@ -12,6 +12,55 @@ import logger from '../../utils/logger.js';
 const router = Router();
 
 /**
+ * POST /api/auth/test-login
+ * HARDCODED TEST LOGIN - Remove in production
+ * Email: test@ckad.com, Password: test123
+ */
+router.post('/test-login', authLimiter, asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  // Hardcoded test credentials
+  const TEST_EMAIL = 'test@ckad.com';
+  const TEST_PASSWORD = 'test123';
+
+  if (email !== TEST_EMAIL || password !== TEST_PASSWORD) {
+    return res.status(401).json({
+      success: false,
+      error: 'InvalidCredentials',
+      message: 'Invalid email or password',
+    });
+  }
+
+  // Find or create test user
+  const user = UserModel.findOrCreate({ 
+    email: TEST_EMAIL, 
+    name: 'Test User' 
+  });
+
+  // Generate tokens
+  const { accessToken, refreshToken } = generateTokens(user.id);
+
+  // Store refresh token hash
+  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  AuthModel.createRefreshToken(user.id, refreshTokenHash, refreshExpiry);
+
+  logger.info('Test user logged in', { userId: user.id, email });
+
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    },
+    accessToken,
+    refreshToken,
+    expiresIn: 900, // 15 minutes in seconds
+  });
+}));
+
+/**
  * POST /api/auth/email/otp
  * Send OTP to email for login
  */
