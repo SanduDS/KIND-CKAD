@@ -80,7 +80,7 @@ export function initializeWebSocket(server) {
 
       // Spawn PTY process
       const containerName = `term-${session.cluster_name}`;
-      ptyProcess = spawn('docker', ['exec', '-it', containerName, '/bin/bash'], {
+      ptyProcess = spawn('docker', ['exec', '-i', containerName, '/bin/bash'], {
         env: {
           ...process.env,
           TERM: 'xterm-256color',
