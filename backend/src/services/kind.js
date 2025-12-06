@@ -71,7 +71,14 @@ nodes:
       // Generate kubeconfig
       await execAsync(`kind get kubeconfig --name ${clusterName} > ${kubeconfigPath}`);
       await execAsync(`chmod 600 ${kubeconfigPath}`);
-      logger.info('Generated kubeconfig', { clusterName, kubeconfigPath });
+      
+      // Fix kubeconfig server address: replace 0.0.0.0 with 127.0.0.1
+      // This is needed because the certificate is valid for 127.0.0.1, not 0.0.0.0
+      const kubeconfigContent = await readFile(kubeconfigPath, 'utf8');
+      const fixedKubeconfig = kubeconfigContent.replace(/https:\/\/0\.0\.0\.0:/g, 'https://127.0.0.1:');
+      await writeFile(kubeconfigPath, fixedKubeconfig);
+      
+      logger.info('Generated and fixed kubeconfig', { clusterName, kubeconfigPath });
 
       // Validate cluster is ready
       await this.waitForClusterReady(clusterName, kubeconfigPath);
