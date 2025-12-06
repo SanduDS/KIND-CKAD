@@ -130,7 +130,7 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
       ws.onopen = () => {
         setIsConnected(true);
         setIsConnecting(false);
-        xterm.write('\r\n\x1b[32m● Connected to terminal\x1b[0m\r\n\r\n');
+        xterm.write('\r\n\x1b[1;32m● Connected to terminal\x1b[0m\r\n\r\n');
       };
 
       ws.onmessage = (event) => {
@@ -141,7 +141,7 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
               xterm.write(message.data);
               break;
             case 'connected':
-              xterm.write(`\x1b[90m${message.message}\x1b[0m\r\n`);
+              xterm.write(`\x1b[36m${message.message}\x1b[0m\r\n\r\n`);
               break;
             case 'exit':
               xterm.write('\r\n\x1b[33m● Session ended\x1b[0m\r\n');

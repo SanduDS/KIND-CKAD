@@ -98,10 +98,12 @@ export function initializeWebSocket(server) {
       const containerName = `term-${session.cluster_name}`;
       
       // Use bash with interactive mode and proper terminal
+      // Note: Don't use -t flag with node-pty as it already allocates a PTY
       ptyProcess = spawn('docker', [
         'exec',
         '-i',
         '-e', 'TERM=xterm-256color',
+        '-e', 'COLORTERM=truecolor',
         containerName,
         '/bin/bash',
         '--login'
@@ -110,7 +112,10 @@ export function initializeWebSocket(server) {
         cols: 80,
         rows: 24,
         cwd: process.env.HOME,
-        env: process.env,
+        env: {
+          ...process.env,
+          TERM: 'xterm-256color',
+        },
       });
 
       // Store connection
@@ -122,6 +127,16 @@ export function initializeWebSocket(server) {
         containerName,
         pid: ptyProcess.pid 
       });
+
+      // Send welcome message after PTY is ready
+      setTimeout(() => {
+        if (ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify({ 
+            type: 'connected', 
+            message: 'Terminal connected. Type commands to interact with your Kubernetes cluster.' 
+          }));
+        }
+      }, 500);
 
       // Handle PTY output -> WebSocket
       ptyProcess.on('data', (data) => {

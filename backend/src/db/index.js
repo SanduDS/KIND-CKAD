@@ -99,7 +99,30 @@ const initSchema = () => {
       body TEXT NOT NULL,
       difficulty TEXT DEFAULT 'medium' CHECK(difficulty IN ('easy', 'medium', 'hard')),
       category TEXT,
+      verification_config TEXT,
+      max_score INTEGER DEFAULT 10,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Task results table - stores verification results for each task attempt
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS task_results (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      task_id INTEGER NOT NULL,
+      user_id TEXT NOT NULL,
+      passed INTEGER DEFAULT 0,
+      score INTEGER DEFAULT 0,
+      max_score INTEGER DEFAULT 10,
+      checks_passed INTEGER DEFAULT 0,
+      checks_total INTEGER DEFAULT 0,
+      verification_output TEXT,
+      verification_details TEXT,
+      verified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     )
   `);
 
@@ -111,6 +134,8 @@ const initSchema = () => {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
     CREATE INDEX IF NOT EXISTS idx_otp_codes_email ON otp_codes(email);
     CREATE INDEX IF NOT EXISTS idx_allocated_ports_session_id ON allocated_ports(session_id);
+    CREATE INDEX IF NOT EXISTS idx_task_results_session_id ON task_results(session_id);
+    CREATE INDEX IF NOT EXISTS idx_task_results_task_id ON task_results(task_id);
   `);
 
   logger.info('Database schema initialized successfully');

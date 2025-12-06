@@ -80,29 +80,61 @@ export const TaskModel = {
   /**
    * Create a new task
    */
-  create({ title, body, difficulty = 'medium', category = null }) {
+  create({ title, body, difficulty = 'medium', category = null, verificationConfig = null, maxScore = 10 }) {
     const stmt = db.prepare(`
-      INSERT INTO tasks (title, body, difficulty, category)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO tasks (title, body, difficulty, category, verification_config, max_score)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
-    const result = stmt.run(title, body, difficulty, category);
+    const result = stmt.run(
+      title, 
+      body, 
+      difficulty, 
+      category,
+      verificationConfig ? JSON.stringify(verificationConfig) : null,
+      maxScore
+    );
     return this.findById(result.lastInsertRowid);
   },
 
   /**
    * Update task
    */
-  update(id, { title, body, difficulty, category }) {
+  update(id, { title, body, difficulty, category, verificationConfig, maxScore }) {
     const stmt = db.prepare(`
       UPDATE tasks 
       SET title = COALESCE(?, title),
           body = COALESCE(?, body),
           difficulty = COALESCE(?, difficulty),
-          category = COALESCE(?, category)
+          category = COALESCE(?, category),
+          verification_config = COALESCE(?, verification_config),
+          max_score = COALESCE(?, max_score)
       WHERE id = ?
     `);
-    stmt.run(title, body, difficulty, category, id);
+    stmt.run(
+      title, 
+      body, 
+      difficulty, 
+      category,
+      verificationConfig ? JSON.stringify(verificationConfig) : undefined,
+      maxScore,
+      id
+    );
     return this.findById(id);
+  },
+
+  /**
+   * Get verification config for a task
+   */
+  getVerificationConfig(id) {
+    const task = this.findById(id);
+    if (!task || !task.verification_config) {
+      return null;
+    }
+    try {
+      return JSON.parse(task.verification_config);
+    } catch {
+      return null;
+    }
   },
 
   /**

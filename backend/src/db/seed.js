@@ -24,6 +24,46 @@ kubectl get pod nginx-pod -o yaml
 The pod should be running and have the correct labels.`,
       difficulty: 'easy',
       category: 'Pods',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Pod exists',
+            command: 'kubectl get pod nginx-pod -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'nginx-pod',
+            points: 2,
+          },
+          {
+            name: 'Pod is running',
+            command: 'kubectl get pod nginx-pod -o jsonpath=\'{.status.phase}\'',
+            type: 'contains',
+            expected: 'Running',
+            points: 2,
+          },
+          {
+            name: 'Correct image',
+            command: 'kubectl get pod nginx-pod -o jsonpath=\'{.spec.containers[0].image}\'',
+            type: 'contains',
+            expected: 'nginx:1.21',
+            points: 2,
+          },
+          {
+            name: 'Container name correct',
+            command: 'kubectl get pod nginx-pod -o jsonpath=\'{.spec.containers[0].name}\'',
+            type: 'contains',
+            expected: 'nginx-container',
+            points: 2,
+          },
+          {
+            name: 'Labels present',
+            command: 'kubectl get pod nginx-pod -o jsonpath=\'{.metadata.labels.app},{.metadata.labels.tier}\'',
+            type: 'contains',
+            expected: 'nginx,frontend',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
     },
     {
       title: 'Create a Deployment with Replicas',
@@ -47,6 +87,39 @@ kubectl get pods -l app=web-app
 All 3 replicas should be running.`,
       difficulty: 'easy',
       category: 'Deployments',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Deployment exists',
+            command: 'kubectl get deployment web-app -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'web-app',
+            points: 2,
+          },
+          {
+            name: 'Correct replicas',
+            command: 'kubectl get deployment web-app -o jsonpath=\'{.spec.replicas}\'',
+            type: 'contains',
+            expected: '3',
+            points: 2,
+          },
+          {
+            name: 'Correct image',
+            command: 'kubectl get deployment web-app -o jsonpath=\'{.spec.template.spec.containers[0].image}\'',
+            type: 'contains',
+            expected: 'httpd:2.4',
+            points: 2,
+          },
+          {
+            name: 'All replicas ready',
+            command: 'kubectl get deployment web-app -o jsonpath=\'{.status.readyReplicas}\'',
+            type: 'contains',
+            expected: '3',
+            points: 4,
+          },
+        ],
+      },
+      maxScore: 10,
     },
     {
       title: 'Create a ClusterIP Service',
@@ -447,13 +520,20 @@ The pod should be in Running state and logs should show "Hello from the broken a
   ];
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO tasks (title, body, difficulty, category)
-    VALUES (?, ?, ?, ?)
+    INSERT OR IGNORE INTO tasks (title, body, difficulty, category, verification_config, max_score)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = db.transaction((tasks) => {
     for (const task of tasks) {
-      insertStmt.run(task.title, task.body, task.difficulty, task.category);
+      insertStmt.run(
+        task.title, 
+        task.body, 
+        task.difficulty, 
+        task.category,
+        task.verificationConfig ? JSON.stringify(task.verificationConfig) : null,
+        task.maxScore || 10
+      );
     }
   });
 

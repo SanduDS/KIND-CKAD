@@ -43,13 +43,25 @@ RUN mkdir -p /root/.kube
 # Set working directory
 WORKDIR /root
 
-# Custom prompt with clear command separation
-RUN echo 'export PS1="\\[\\033[1;32m\\]ckad\\[\\033[0m\\]@\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc \
-    && echo 'export PROMPT_COMMAND="echo -ne \"\\033[90m────────────────────────────────────────\\033[0m\\n\""' >> /root/.bashrc
+# Custom prompt for kubectl practice - clean and simple
+RUN echo 'export PS1="\\[\\033[1;32m\\]kubectl\\[\\033[0m\\]:\\[\\033[1;34m\\]\\w\\[\\033[0m\\]\\$ "' >> /root/.bashrc
 
-# Enable readline for proper arrow key support
+# Enable readline for proper arrow key support and vim compatibility
 RUN echo 'set enable-bracketed-paste off' >> /root/.inputrc \
-    && echo 'set editing-mode emacs' >> /root/.inputrc
+    && echo 'set editing-mode emacs' >> /root/.inputrc \
+    && echo 'set keymap emacs' >> /root/.inputrc \
+    && echo '"\e[A": history-search-backward' >> /root/.inputrc \
+    && echo '"\e[B": history-search-forward' >> /root/.inputrc \
+    && echo '"\e[C": forward-char' >> /root/.inputrc \
+    && echo '"\e[D": backward-char' >> /root/.inputrc
+
+# Create vim config for better terminal compatibility
+RUN echo 'set nocompatible' >> /root/.vimrc \
+    && echo 'set backspace=indent,eol,start' >> /root/.vimrc \
+    && echo 'set t_Co=256' >> /root/.vimrc \
+    && echo 'syntax on' >> /root/.vimrc \
+    && echo 'set background=dark' >> /root/.vimrc \
+    && echo 'set ttimeoutlen=10' >> /root/.vimrc
 
 # Simple welcome message (questions shown in UI, not terminal)
 RUN echo 'echo "🎯 CKAD Practice Terminal"' >> /root/.bashrc \
