@@ -19,11 +19,17 @@ export default function LoginPage() {
 
   const handleTestLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    if (!email || !password) {
+      toast.error('Please enter both email and password');
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Attempting login with:', { email });
       const result = await authApi.testLogin(email, password);
+      console.log('Login result:', result);
+      
       if (result.success) {
         setAuth(result.user, result.accessToken, result.refreshToken);
         toast.success('Login successful!');
@@ -31,8 +37,9 @@ export default function LoginPage() {
       } else {
         toast.error(result.message || 'Invalid credentials');
       }
-    } catch (error) {
-      toast.error('Login failed. Please try again.');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast.error(error.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

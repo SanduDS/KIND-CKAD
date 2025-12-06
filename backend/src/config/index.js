@@ -5,7 +5,24 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-dotenv.config({ path: join(__dirname, '../../.env') });
+// Try multiple .env locations
+const envPaths = [
+  join(__dirname, '../../.env'),
+  join(process.cwd(), '.env'),
+  '/opt/ckad-platform/.env',
+];
+
+for (const envPath of envPaths) {
+  try {
+    const result = dotenv.config({ path: envPath });
+    if (!result.error) {
+      console.log(`Loaded .env from: ${envPath}`);
+      break;
+    }
+  } catch (err) {
+    // Continue to next path
+  }
+}
 
 const config = {
   // Server

@@ -117,12 +117,14 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
       };
     };
 
-    const connectWebSocket = (xterm: any) => {
-      setIsConnecting(true);
-      setError(null);
+      const connectWebSocket = (xterm: any) => {
+        setIsConnecting(true);
+        setError(null);
 
-      const wsFullUrl = `${process.env.NEXT_PUBLIC_WS_URL}${wsUrl}&token=${accessToken}`;
-      const ws = new WebSocket(wsFullUrl);
+        // Use relative WebSocket URL (same domain)
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsFullUrl = `${wsProtocol}//${window.location.host}${wsUrl}&token=${accessToken}`;
+        const ws = new WebSocket(wsFullUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -190,7 +192,9 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
     }
     if (xtermRef.current) {
       xtermRef.current.clear();
-      const wsFullUrl = `${process.env.NEXT_PUBLIC_WS_URL}${wsUrl}&token=${accessToken}`;
+      const wsProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsHost = typeof window !== 'undefined' ? window.location.host : 'localhost:3001';
+      const wsFullUrl = `${wsProtocol}//${wsHost}${wsUrl}&token=${accessToken}`;
       const ws = new WebSocket(wsFullUrl);
       wsRef.current = ws;
       setIsConnecting(true);

@@ -1,4 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Use relative URLs in production (same domain), absolute in dev
+const API_URL = typeof window !== 'undefined' 
+  ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
+  : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
 // Helper to get auth headers
 function getAuthHeaders(): HeadersInit {

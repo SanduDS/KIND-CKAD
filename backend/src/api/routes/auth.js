@@ -86,6 +86,60 @@ router.post('/email/otp', authLimiter, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * POST /api/auth/login
+ * Simple email/password login (for testing)
+ */
+router.post('/login', authLimiter, asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new ValidationError('Email and password are required');
+  }
+
+  // Hardcoded test credentials
+  const TEST_USERS = {
+    'test@ckad.local': 'test123',
+    'admin@ckad.local': 'admin123',
+    'user@ckad.local': 'user123',
+  };
+
+  if (TEST_USERS[email] !== password) {
+    return res.status(401).json({
+      error: 'InvalidCredentials',
+      message: 'Invalid email or password',
+    });
+  }
+
+  // Find or create user
+  const user = UserModel.findOrCreate({ 
+    email, 
+    name: email.split('@')[0] 
+  });
+
+  // Generate tokens
+  const { accessToken, refreshToken } = generateTokens(user.id);
+
+  // Store refresh token hash
+  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+  const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  AuthModel.createRefreshToken(user.id, refreshTokenHash, refreshExpiry);
+
+  logger.info('User logged in via password', { userId: user.id, email });
+
+  res.json({
+    success: true,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    },
+    accessToken,
+    refreshToken,
+    expiresIn: 900, // 15 minutes in seconds
+  });
+}));
+
+/**
  * POST /api/auth/email/verify
  * Verify OTP and login
  */
