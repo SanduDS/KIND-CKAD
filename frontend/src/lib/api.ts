@@ -4,6 +4,7 @@ const getApiUrl = () => {
   if (typeof window === 'undefined') {
     // Server-side: use env var or default
     const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // Remove any trailing /api to avoid duplication
     return url.replace(/\/api\/?$/, '');
   }
   
@@ -21,21 +22,19 @@ const getApiUrl = () => {
     const envUrlObj = new URL(envUrl);
     const currentUrlObj = new URL(currentOrigin);
     
-    // If same origin (hostname + port), use relative URLs
+    // If same origin (hostname + port), always use relative URLs
+    // This handles cases where NEXT_PUBLIC_API_URL might be set to the full URL with /api
     if (envUrlObj.origin === currentUrlObj.origin) {
-      return ''; // Relative URLs
-    }
-    
-    // If env URL starts with current origin, use relative
-    if (envUrl.startsWith(currentOrigin)) {
-      return ''; // Relative URLs
+      return ''; // Relative URLs - let Nginx handle routing
     }
     
     // Different origin/port - use absolute URL (remove trailing /api)
     return envUrl.replace(/\/api\/?$/, '');
   } catch (e) {
     // Invalid URL format - try string matching
-    if (envUrl === currentOrigin || envUrl.startsWith(currentOrigin)) {
+    // Check if envUrl is the same origin (with or without /api)
+    const envUrlWithoutApi = envUrl.replace(/\/api\/?$/, '');
+    if (envUrlWithoutApi === currentOrigin || envUrl.startsWith(currentOrigin)) {
       return ''; // Relative URLs
     }
     // Remove trailing /api and return
@@ -79,7 +78,8 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
+  const url = buildApiUrl(endpoint);
+  const response = await fetch(url, {
     ...options,
     headers,
   });
@@ -91,7 +91,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     console.error('Non-JSON response:', { 
       status: response.status, 
       contentType,
-      url: `${API_URL}${endpoint}`,
+      url: url,
       preview: text.substring(0, 200)
     });
     throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
@@ -105,7 +105,7 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         // Retry the request
-        return fetch(`${API_URL}${endpoint}`, {
+        return fetch(buildApiUrl(endpoint), {
           ...options,
           headers: {
             ...headers,
@@ -129,7 +129,7 @@ async function refreshAccessToken(): Promise<boolean> {
     const { state } = JSON.parse(stored);
     if (!state?.refreshToken) return false;
 
-    const response = await fetch(`${API_URL}/api/auth/refresh`, {
+    const response = await fetch(buildApiUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: state.refreshToken }),
@@ -155,10 +155,31 @@ async function refreshAccessToken(): Promise<boolean> {
 
 // ============ Auth API ============
 
+// Helper to construct API URLs safely (prevents double /api)
+const buildApiUrl = (endpoint: string): string => {
+  // Ensure endpoint starts with /
+  if (!endpoint.startsWith('/')) {
+    endpoint = '/' + endpoint;
+  }
+  
+  // If API_URL is empty (relative), just use the endpoint
+  if (!API_URL) {
+    return endpoint;
+  }
+  
+  // If API_URL already ends with /api, don't add it again
+  const baseUrl = API_URL.endsWith('/api') ? API_URL.replace(/\/api\/?$/, '') : API_URL;
+  
+  // Combine and ensure no double slashes
+  const url = `${baseUrl}${endpoint}`.replace(/([^:]\/)\/+/g, '$1');
+  
+  return url;
+};
+
 export const authApi = {
   // Test login (hardcoded credentials)
   async testLogin(email: string, password: string) {
-    const url = `${API_URL}/api/auth/test-login`;
+    const url = buildApiUrl('/api/auth/test-login');
     console.log('[API] Test login request to:', url);
     
     try {
@@ -205,7 +226,7 @@ export const authApi = {
 
   // Send OTP to email
   async sendOTP(email: string) {
-    const response = await fetch(`${API_URL}/api/auth/email/otp`, {
+    const response = await fetch(buildApiUrl('/api/auth/email/otp'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -215,7 +236,7 @@ export const authApi = {
 
   // Verify OTP
   async verifyOTP(email: string, otp: string) {
-    const response = await fetch(`${API_URL}/api/auth/email/verify`, {
+    const response = await fetch(buildApiUrl('/api/auth/email/verify'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp }),
@@ -225,7 +246,7 @@ export const authApi = {
 
   // Google OAuth URL
   getGoogleAuthUrl() {
-    return `${API_URL}/api/auth/google`;
+    return buildApiUrl('/api/auth/google');
   },
 
   // Get current user
@@ -363,12 +384,12 @@ export const tasksApi = {
 
 export const platformApi = {
   async status() {
-    const response = await fetch(`${API_URL}/api/status`);
+    const response = await fetch(buildApiUrl('/api/status'));
     return response.json();
   },
 
   async health() {
-    const response = await fetch(`${API_URL}/healthz`);
+    const response = await fetch(buildApiUrl('/healthz'));
     return response.json();
   },
 };
