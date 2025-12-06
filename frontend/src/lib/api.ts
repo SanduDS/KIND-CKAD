@@ -1,15 +1,32 @@
 // Use relative URLs in production (same domain), absolute in dev
 // Normalize API_URL to remove trailing /api if present (to avoid double /api/api)
 const getApiUrl = () => {
-  const baseUrl = typeof window !== 'undefined' 
-    ? (process.env.NEXT_PUBLIC_API_URL || window.location.origin)
-    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
+  if (typeof window === 'undefined') {
+    // Server-side: use env var or default
+    const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    return url.replace(/\/api\/?$/, '');
+  }
   
-  // Remove trailing /api if present to avoid double /api/api
-  return baseUrl.replace(/\/api\/?$/, '');
+  // Client-side: check if we should use relative URLs
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  // If NEXT_PUBLIC_API_URL is not set or matches current origin, use relative URLs
+  if (!envUrl || envUrl === window.location.origin || envUrl.startsWith(window.location.origin)) {
+    return ''; // Empty string = relative URLs
+  }
+  
+  // Otherwise use the configured URL (for different domain/port)
+  return envUrl.replace(/\/api\/?$/, '');
 };
 
 const API_URL = getApiUrl();
+
+// Debug logging in development
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('[API] Base URL:', API_URL || '(relative)');
+  console.log('[API] Window origin:', window.location.origin);
+  console.log('[API] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+}
 
 // Helper to get auth headers
 function getAuthHeaders(): HeadersInit {

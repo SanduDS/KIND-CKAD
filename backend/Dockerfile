@@ -26,7 +26,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci --only=production
+# Use --legacy-peer-deps to handle react/react-dom peer dependencies
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY . .

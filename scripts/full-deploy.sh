@@ -143,7 +143,8 @@ success "Terminal image built"
 # Install backend
 log "Installing backend..."
 cd $APP_DIR/backend
-npm install --production --legacy-peer-deps
+# Install all dependencies (not just production) because resend needs react-dom
+npm install --legacy-peer-deps
 success "Backend installed"
 
 # Setup frontend

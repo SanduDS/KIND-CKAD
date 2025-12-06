@@ -42,6 +42,24 @@ This platform provides isolated, time-limited Kubernetes clusters for practicing
 
 ## Quick Start
 
+### Local Development (Docker)
+
+For local testing with Docker (Rancher Desktop, Docker Desktop, etc.):
+
+```bash
+# 1. Setup and start
+chmod +x scripts/local-setup.sh
+./scripts/local-setup.sh
+
+# 2. Access the app
+# Frontend: http://localhost:3000
+# Backend: http://localhost:3001
+```
+
+See [QUICK-START.md](QUICK-START.md) for a 3-step guide or [LOCAL-SETUP.md](LOCAL-SETUP.md) for detailed instructions.
+
+### Production Deployment
+
 ### Prerequisites
 
 - Ubuntu 22.04/24.04 VPS (8GB+ RAM recommended)

@@ -1,13 +1,38 @@
-import { Resend } from 'resend';
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 
+// Lazy import Resend to avoid react-email dependency issues at startup
+// Only import if email is actually configured
 let resendClient = null;
+let resendAvailable = false;
 
-// Initialize email client based on provider
-if (config.email.provider === 'resend' && config.email.resendApiKey) {
-  resendClient = new Resend(config.email.resendApiKey);
-}
+// Check if resend is configured and available
+const isResendAvailable = () => {
+  return config.email.provider === 'resend' && config.email.resendApiKey;
+};
+
+// Only import Resend when actually needed (avoids loading react-email/react-dom)
+const getResendClient = async () => {
+  if (!isResendAvailable()) {
+    return null;
+  }
+  
+  if (!resendClient && !resendAvailable) {
+    try {
+      // Dynamic import to avoid loading react-email if not needed
+      const resendModule = await import('resend');
+      const Resend = resendModule.Resend;
+      resendClient = new Resend(config.email.resendApiKey);
+      resendAvailable = true;
+      logger.info('Resend client initialized');
+    } catch (error) {
+      logger.error('Failed to load Resend', { error: error.message });
+      resendAvailable = false;
+      return null;
+    }
+  }
+  return resendClient;
+};
 
 /**
  * Send OTP email
@@ -68,41 +93,46 @@ If you didn't request this code, you can safely ignore this email.
  * Generic send email function
  */
 export const sendEmail = async (to, subject, html, text) => {
-  if (config.env === 'development' && !resendClient) {
-    // In development without email configured, just log
-    logger.info('Email would be sent (dev mode)', { to, subject });
-    logger.info('Email content:', { text });
-    return { success: true, messageId: 'dev-mode' };
-  }
-
-  if (config.email.provider === 'resend' && resendClient) {
-    try {
-      const result = await resendClient.emails.send({
-        from: config.email.from,
-        to,
-        subject,
-        html,
-        text,
-      });
-
-      logger.info('Email sent via Resend', { to, messageId: result.id });
-      return { success: true, messageId: result.id };
-    } catch (error) {
-      logger.error('Failed to send email via Resend', { 
-        error: error.message, 
-        to 
-      });
-      throw new Error('Failed to send email');
+  // If no email provider configured, just log in dev mode
+  if (!isResendAvailable()) {
+    if (config.env === 'development') {
+      logger.info('Email would be sent (no provider configured)', { to, subject });
+      logger.info('Email content:', { text });
+      return { success: true, messageId: 'dev-mode' };
     }
+    logger.warn('Email not sent - no provider configured', { to, subject });
+    return { success: false, message: 'No email provider configured' };
   }
 
-  // Fallback: log email in development
-  if (config.env === 'development') {
-    logger.info('Email (no provider configured)', { to, subject, text });
-    return { success: true, messageId: 'no-provider' };
-  }
+  // Try to use Resend
+  try {
+    const client = await getResendClient();
+    if (!client) {
+      logger.warn('Resend client not available, logging email instead', { to, subject });
+      if (config.env === 'development') {
+        logger.info('Email content:', { text });
+      }
+      return { success: false, message: 'Email provider not available' };
+    }
+    
+    const result = await client.emails.send({
+      from: config.email.from,
+      to,
+      subject,
+      html,
+      text,
+    });
 
-  throw new Error('No email provider configured');
+    logger.info('Email sent via Resend', { to, messageId: result.id });
+    return { success: true, messageId: result.id };
+  } catch (error) {
+    logger.error('Failed to send email via Resend', { 
+      error: error.message, 
+      to 
+    });
+    // Don't throw - just return failure
+    return { success: false, message: error.message };
+  }
 };
 
 export default { sendOTPEmail, sendEmail };
