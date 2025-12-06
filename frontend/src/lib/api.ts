@@ -1,5 +1,6 @@
 // Use relative URLs in production (same domain), absolute in dev
-// Normalize API_URL to remove trailing /api if present (to avoid double /api/api)
+// ALWAYS use relative URLs when frontend and backend are on the same domain
+// This prevents issues with NEXT_PUBLIC_API_URL being set incorrectly
 const getApiUrl = () => {
   if (typeof window === 'undefined') {
     // Server-side: use env var or default
@@ -8,37 +9,39 @@ const getApiUrl = () => {
     return url.replace(/\/api\/?$/, '');
   }
   
-  // Client-side: check if we should use relative URLs
+  // Client-side: ALWAYS use relative URLs when on the same domain
+  // This is the safest approach and works with Nginx reverse proxy
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   const currentOrigin = window.location.origin;
   
-  // If NEXT_PUBLIC_API_URL is not set, use relative URLs (same domain)
+  // If no env URL set, definitely use relative
   if (!envUrl) {
     return ''; // Empty string = relative URLs
   }
   
-  // Parse the env URL
+  // Parse and compare origins
   try {
-    const envUrlObj = new URL(envUrl);
+    // Remove /api from envUrl if present for comparison
+    const envUrlForComparison = envUrl.replace(/\/api\/?$/, '');
+    const envUrlObj = new URL(envUrlForComparison);
     const currentUrlObj = new URL(currentOrigin);
     
-    // If same origin (hostname + port), always use relative URLs
-    // This handles cases where NEXT_PUBLIC_API_URL might be set to the full URL with /api
+    // If same origin, ALWAYS use relative URLs (regardless of /api in env)
     if (envUrlObj.origin === currentUrlObj.origin) {
-      return ''; // Relative URLs - let Nginx handle routing
+      return ''; // Relative URLs - Nginx will route /api/* to backend
     }
     
-    // Different origin/port - use absolute URL (remove trailing /api)
-    return envUrl.replace(/\/api\/?$/, '');
+    // Different origin (e.g., local dev with different ports) - use absolute
+    // But still remove trailing /api to be safe
+    return envUrlForComparison;
   } catch (e) {
-    // Invalid URL format - try string matching
-    // Check if envUrl is the same origin (with or without /api)
+    // Invalid URL - try simple string matching
     const envUrlWithoutApi = envUrl.replace(/\/api\/?$/, '');
     if (envUrlWithoutApi === currentOrigin || envUrl.startsWith(currentOrigin)) {
       return ''; // Relative URLs
     }
-    // Remove trailing /api and return
-    return envUrl.replace(/\/api\/?$/, '');
+    // Different origin - return without /api
+    return envUrlWithoutApi;
   }
 };
 
@@ -49,7 +52,10 @@ if (typeof window !== 'undefined') {
   console.log('[API Config] Base URL:', API_URL || '(relative - same origin)');
   console.log('[API Config] Window origin:', window.location.origin);
   console.log('[API Config] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL || '(not set)');
-  console.log('[API Config] Example request:', `${API_URL || ''}/api/auth/test-login`);
+  // Test buildApiUrl to show what it produces
+  const testUrl = buildApiUrl('/api/auth/test-login');
+  console.log('[API Config] buildApiUrl test:', testUrl);
+  console.log('[API Config] Has double /api/api?', testUrl.includes('/api/api'));
 }
 
 // Helper to get auth headers
@@ -156,22 +162,37 @@ async function refreshAccessToken(): Promise<boolean> {
 // ============ Auth API ============
 
 // Helper to construct API URLs safely (prevents double /api)
+// This function ensures we NEVER have /api/api in the final URL
 const buildApiUrl = (endpoint: string): string => {
   // Ensure endpoint starts with /
   if (!endpoint.startsWith('/')) {
     endpoint = '/' + endpoint;
   }
   
-  // If API_URL is empty (relative), just use the endpoint
-  if (!API_URL) {
+  // If API_URL is empty (relative URLs), just return the endpoint
+  // This is the normal case in production (same domain)
+  if (!API_URL || API_URL === '') {
     return endpoint;
   }
   
-  // If API_URL already ends with /api, don't add it again
-  const baseUrl = API_URL.endsWith('/api') ? API_URL.replace(/\/api\/?$/, '') : API_URL;
+  // API_URL is set (different origin, e.g., local dev)
+  // Clean the base URL - remove any trailing /api or slashes
+  let baseUrl = API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
   
-  // Combine and ensure no double slashes
-  const url = `${baseUrl}${endpoint}`.replace(/([^:]\/)\/+/g, '$1');
+  // Combine baseUrl and endpoint
+  let url = `${baseUrl}${endpoint}`;
+  
+  // Remove any double slashes (but preserve http:// or https://)
+  url = url.replace(/([^:]\/)\/+/g, '$1');
+  
+  // CRITICAL: Remove any /api/api patterns (this is the main fix)
+  url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
+  
+  // Additional safety: if baseUrl somehow had /api and endpoint has /api, fix it
+  // This handles edge cases where NEXT_PUBLIC_API_URL was set incorrectly
+  while (url.includes('/api/api')) {
+    url = url.replace(/\/api\/api(\/|$)/g, '/api$1');
+  }
   
   return url;
 };
