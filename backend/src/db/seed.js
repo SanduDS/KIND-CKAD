@@ -328,6 +328,122 @@ kubectl describe hpa php-apache-hpa
       difficulty: 'hard',
       category: 'Scaling',
     },
+    {
+      title: 'Create a Job',
+      body: `## Task: Create a Job
+
+Create a Job named \`pi-calculator\` in the \`default\` namespace with the following specifications:
+
+- Image: \`perl:5.34\`
+- Command: \`["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"]\`
+- Completions: 3
+- Parallelism: 2
+- Backoff limit: 4
+
+### Verification
+
+\`\`\`bash
+kubectl get job pi-calculator
+kubectl get pods -l job-name=pi-calculator
+kubectl logs <pod-name>
+\`\`\`
+
+The job should complete successfully with 3 completions.`,
+      difficulty: 'medium',
+      category: 'Jobs',
+    },
+    {
+      title: 'Update Deployment Image',
+      body: `## Task: Update Deployment Image
+
+A deployment named \`web-app\` exists in the \`default\` namespace running image \`nginx:1.20\`.
+
+Update the deployment to use image \`nginx:1.21\` and record the change.
+
+### Verification
+
+\`\`\`bash
+kubectl describe deployment web-app | grep Image
+kubectl rollout history deployment web-app
+\`\`\`
+
+The deployment should be running nginx:1.21 and the rollout history should show the change.`,
+      difficulty: 'easy',
+      category: 'Deployments',
+    },
+    {
+      title: 'Create NodePort Service',
+      body: `## Task: Create NodePort Service
+
+Create a NodePort service named \`web-nodeport\` in the \`default\` namespace with the following specifications:
+
+- Selector: \`app=web\`
+- Port: 80
+- Target port: 8080
+- NodePort: 30080
+- Protocol: TCP
+
+### Verification
+
+\`\`\`bash
+kubectl get svc web-nodeport
+kubectl describe svc web-nodeport
+\`\`\`
+
+The service should expose port 30080 on all nodes.`,
+      difficulty: 'medium',
+      category: 'Services',
+    },
+    {
+      title: 'Create DaemonSet',
+      body: `## Task: Create DaemonSet
+
+Create a DaemonSet named \`log-collector\` in the \`kube-system\` namespace with the following specifications:
+
+- Image: \`fluentd:v1.14\`
+- Container name: \`fluentd\`
+- Mount host path \`/var/log\` to container path \`/var/log\`
+- Labels: \`app=log-collector\`
+
+### Verification
+
+\`\`\`bash
+kubectl get daemonset log-collector -n kube-system
+kubectl get pods -n kube-system -l app=log-collector
+\`\`\`
+
+The DaemonSet should have one pod running on each node.`,
+      difficulty: 'medium',
+      category: 'DaemonSets',
+    },
+    {
+      title: 'Troubleshoot Pod Failure',
+      body: `## Task: Troubleshoot Pod Failure
+
+A pod named \`broken-app\` in the \`default\` namespace is in CrashLoopBackOff state.
+
+Investigate and fix the issue. The pod should:
+- Use image: \`busybox:1.35\`
+- Run command: \`["sh", "-c", "echo Hello from the broken app && sleep 3600"]\`
+
+### Steps
+
+1. Check pod status and logs
+2. Identify the issue
+3. Fix the pod configuration
+4. Verify the pod is running
+
+### Verification
+
+\`\`\`bash
+kubectl get pod broken-app
+kubectl logs broken-app
+\`\`\`
+
+The pod should be in Running state and logs should show "Hello from the broken app".`,
+      difficulty: 'hard',
+      category: 'Troubleshooting',
+    },
   ];
 
   const insertStmt = db.prepare(`

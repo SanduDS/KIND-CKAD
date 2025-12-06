@@ -69,6 +69,15 @@ cd ..
 echo "✓ Database initialized"
 echo ""
 
+# Verify database has tasks
+TASK_COUNT=$(sqlite3 data/ckad.db "SELECT COUNT(*) FROM tasks;" 2>/dev/null || echo "0")
+if [ "$TASK_COUNT" -lt 20 ]; then
+  echo "✗ Error: Only $TASK_COUNT tasks in database (need 20)"
+  exit 1
+fi
+echo "✓ Database has $TASK_COUNT tasks"
+echo ""
+
 # Start services
 echo "▸ Starting services..."
 systemctl start ckad-backend
