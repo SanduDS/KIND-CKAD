@@ -121,7 +121,9 @@ nodes:
           { timeout: 15000 }
         );
 
-        logger.debug('Node status output', { clusterName, attempt, stdout: stdout.substring(0, 200) });
+        if (attempt <= 3 || attempt % 5 === 0) {
+          logger.info('Node status check', { clusterName, attempt, stdout: stdout.substring(0, 200) });
+        }
 
         // Check if node is Ready and not in NotReady state
         const lines = stdout.split('\n');
@@ -129,7 +131,9 @@ nodes:
         
         if (nodeLines.length > 0) {
           const nodeStatus = nodeLines[0];
-          logger.debug('Node line found', { clusterName, attempt, nodeStatus: nodeStatus.trim() });
+          if (attempt <= 3 || attempt % 5 === 0) {
+            logger.info('Node line found', { clusterName, attempt, nodeStatus: nodeStatus.trim() });
+          }
           
           // Check for Ready status and ensure it's not NotReady
           if (nodeStatus.includes('Ready') && !nodeStatus.includes('NotReady')) {
@@ -159,34 +163,44 @@ nodes:
                 logger.info('Cluster fully ready with system pods', { clusterName, runningPods });
                 return true;
               } else {
-                logger.debug('Not enough pods running yet', { clusterName, attempt, runningPods, required: 3 });
+                if (attempt % 5 === 0) {
+                  logger.info('Not enough pods running yet', { clusterName, attempt, runningPods, required: 3 });
+                }
               }
             } catch (podError) {
               // Pods not ready yet, but node is ready - continue waiting
-              logger.debug('System pods check failed', { 
-                clusterName, 
-                attempt, 
-                error: podError.message 
-              });
+              if (attempt <= 3 || attempt % 5 === 0) {
+                logger.info('System pods check failed', { 
+                  clusterName, 
+                  attempt, 
+                  error: podError.message 
+                });
+              }
             }
           } else {
-            logger.debug('Node not in Ready state', { 
-              clusterName, 
-              attempt, 
-              nodeStatus: nodeStatus.trim() 
-            });
+            if (attempt <= 3 || attempt % 5 === 0) {
+              logger.info('Node not in Ready state', { 
+                clusterName, 
+                attempt, 
+                nodeStatus: nodeStatus.trim() 
+              });
+            }
           }
         } else {
-          logger.debug('No control-plane node found', { clusterName, attempt, allLines: lines.length });
+          if (attempt <= 3 || attempt % 5 === 0) {
+            logger.info('No control-plane node found', { clusterName, attempt, allLines: lines.length });
+          }
         }
       } catch (error) {
-        logger.debug('Cluster readiness check failed', { 
-          clusterName, 
-          attempt, 
-          maxAttempts,
-          error: error.message,
-          errorType: error.constructor.name
-        });
+        if (attempt <= 3 || attempt % 10 === 0) {
+          logger.info('Cluster readiness check exception', {
+            clusterName, 
+            attempt, 
+            maxAttempts,
+            error: error.message,
+            errorType: error.constructor.name
+          });
+        }
       }
 
       // Log progress every 10 attempts
