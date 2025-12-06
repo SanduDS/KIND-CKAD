@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { spawn } from 'child_process';
+import { spawn } from 'node-pty';
 import { URL } from 'url';
 import { authenticateWebSocket } from '../api/middleware/auth.js';
 import SessionModel from '../models/session.js';
@@ -78,44 +78,33 @@ export function initializeWebSocket(server) {
         }
       }
 
-      // Spawn PTY process
+      // Spawn PTY process using node-pty for full terminal support (vim, colors, etc.)
       const containerName = `term-${session.cluster_name}`;
-      ptyProcess = spawn('docker', ['exec', '-i', containerName, '/bin/bash'], {
-        env: {
-          ...process.env,
-          TERM: 'xterm-256color',
-        },
+      ptyProcess = spawn('docker', ['exec', '-it', containerName, '/bin/bash'], {
+        name: 'xterm-256color',
+        cols: 80,
+        rows: 24,
+        cwd: process.env.HOME,
+        env: process.env,
       });
 
       // Store connection
       activeConnections.set(connectionId, { ws, pty: ptyProcess, sessionId });
 
-      // Handle PTY output -> WebSocket
-      ptyProcess.stdout.on('data', (data) => {
+      // Handle PTY output -> WebSocket (node-pty uses onData instead of stdout.on)
+      ptyProcess.onData((data) => {
         if (ws.readyState === ws.OPEN) {
-          ws.send(JSON.stringify({ type: 'output', data: data.toString() }));
+          ws.send(JSON.stringify({ type: 'output', data }));
         }
       });
 
-      ptyProcess.stderr.on('data', (data) => {
+      ptyProcess.onExit(({ exitCode, signal }) => {
+        logger.info('PTY process exited', { sessionId, exitCode, signal });
         if (ws.readyState === ws.OPEN) {
-          ws.send(JSON.stringify({ type: 'output', data: data.toString() }));
-        }
-      });
-
-      ptyProcess.on('exit', (code) => {
-        logger.info('PTY process exited', { sessionId, code });
-        if (ws.readyState === ws.OPEN) {
-          ws.send(JSON.stringify({ type: 'exit', code }));
+          ws.send(JSON.stringify({ type: 'exit', code: exitCode }));
           ws.close(1000, 'Process exited');
         }
-      });
-
-      ptyProcess.on('error', (error) => {
-        logger.error('PTY process error', { sessionId, error: error.message });
-        if (ws.readyState === ws.OPEN) {
-          ws.send(JSON.stringify({ type: 'error', message: error.message }));
-        }
+        activeConnections.delete(connectionId);
       });
 
       // Handle WebSocket messages -> PTY
@@ -125,14 +114,19 @@ export function initializeWebSocket(server) {
 
           switch (parsed.type) {
             case 'input':
-              if (ptyProcess && ptyProcess.stdin.writable) {
-                ptyProcess.stdin.write(parsed.data);
+              if (ptyProcess) {
+                ptyProcess.write(parsed.data);
               }
               break;
 
             case 'resize':
-              // Note: resize not supported with basic spawn
-              // Would need node-pty for proper resize support
+              if (ptyProcess && parsed.cols && parsed.rows) {
+                try {
+                  ptyProcess.resize(parsed.cols, parsed.rows);
+                } catch (error) {
+                  logger.error('Failed to resize PTY', { sessionId, error: error.message });
+                }
+              }
               break;
 
             case 'ping':
