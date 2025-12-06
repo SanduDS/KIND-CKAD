@@ -155,9 +155,20 @@ NEXT_PUBLIC_WS_URL=wss://$DOMAIN
 EOF
 npm install --legacy-peer-deps
 npm run build
-cp -r .next/static .next/standalone/.next/ 2>/dev/null || true
-cp -r public .next/standalone/ 2>/dev/null || true
-success "Frontend built"
+
+# Copy static files to standalone (REQUIRED for Next.js standalone mode)
+log "Copying static files to standalone..."
+mkdir -p .next/standalone/.next
+cp -r .next/static .next/standalone/.next/static
+if [ -d "public" ]; then
+    cp -r public .next/standalone/public
+fi
+# Verify static files exist
+if [ -d ".next/standalone/.next/static" ]; then
+    success "Frontend built (static files copied)"
+else
+    error "Static files not copied correctly"
+fi
 
 # Seed database
 log "Initializing database..."
@@ -200,11 +211,11 @@ After=network.target ckad-backend.service
 
 [Service]
 Type=simple
-WorkingDirectory=$APP_DIR/frontend
+WorkingDirectory=$APP_DIR/frontend/.next/standalone
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=HOSTNAME=0.0.0.0
-ExecStart=/usr/bin/node .next/standalone/server.js
+ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=10
 
