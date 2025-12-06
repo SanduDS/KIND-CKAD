@@ -26,7 +26,9 @@
     "passport-google-oauth20": "^2.0.0",
     "resend": "^3.0.0",
     "winston": "^3.11.0",
-    "cron": "^3.1.6"
+    "cron": "^3.1.6",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.3"
