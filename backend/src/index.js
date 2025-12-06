@@ -57,6 +57,7 @@ const corsOptions = {
       config.frontendUrl,
       'http://localhost:3000',
       'http://127.0.0.1:3000',
+      'https://kind-k8s.duckdns.org',
     ];
     
     if (allowedOrigins.includes(origin)) {
