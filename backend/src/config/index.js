@@ -66,7 +66,7 @@ const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 60000,
     maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
     authMax: parseInt(process.env.AUTH_RATE_LIMIT_MAX, 10) || 10,
-    sessionStartMax: parseInt(process.env.SESSION_START_RATE_LIMIT_MAX, 10) || 3,
+    sessionStartMax: parseInt(process.env.SESSION_START_RATE_LIMIT_MAX, 10) || 1000, // test
   },
 
   // Database
