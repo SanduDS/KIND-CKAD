@@ -5,6 +5,7 @@ import TaskResultModel from '../../models/taskResult.js';
 import VerificationService from '../../services/verification.js';
 import { authenticate } from '../middleware/auth.js';
 import { asyncHandler, NotFoundError, ValidationError } from '../middleware/errorHandler.js';
+import logger from '../../utils/logger.js';
 
 const router = Router();
 
@@ -110,6 +111,7 @@ router.get('/session/current', authenticate, asyncHandler(async (req, res) => {
 /**
  * POST /api/tasks/session/complete
  * Mark current task as complete and move to next (within assigned 20 tasks)
+ * REQUIRES VERIFICATION: Must verify answer before advancing to next question
  */
 router.post('/session/complete', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
@@ -141,6 +143,25 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
     );
   }
   
+  // ============================================
+  // VERIFICATION REQUIREMENT: Check if task has been verified
+  // ============================================
+  const taskResult = TaskResultModel.findBySessionAndTask(session.id, taskId);
+  
+  if (!taskResult) {
+    throw new ValidationError(
+      'You must verify your answer before proceeding to the next question. Click "Verify Answer" button.'
+    );
+  }
+  
+  if (!taskResult.passed) {
+    throw new ValidationError(
+      `Your answer did not pass verification (Score: ${taskResult.score}/${taskResult.max_score}). ` +
+      `Please fix your solution and verify again before proceeding.`
+    );
+  }
+  // ============================================
+  
   // Add current task to completed if not already there
   if (!completed.includes(taskId)) {
     completed.push(taskId);
@@ -148,6 +169,30 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
 
   // Move to next task
   const nextIndex = currentIndex + 1;
+  
+  // Clean terminal for next question (create new namespace, delete old one)
+  if (nextIndex < assigned.length) {
+    try {
+      const containerName = `term-${session.cluster_name}`;
+      const TerminalService = (await import('../../services/terminal.js')).default;
+      
+      await TerminalService.cleanTerminalForNextQuestion(
+        containerName,
+        nextIndex + 1 // Question number (1-based)
+      );
+      
+      logger.info('Terminal cleaned for next question', {
+        sessionId: session.id,
+        questionNumber: nextIndex + 1,
+      });
+    } catch (error) {
+      // Log but don't fail - terminal cleaning is not critical
+      logger.warn('Failed to clean terminal for next question', {
+        sessionId: session.id,
+        error: error.message,
+      });
+    }
+  }
   
   // Update session with new current task index and completed list
   const taskData = JSON.stringify({ assigned, completed });
@@ -165,6 +210,12 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
       total: assigned.length,
       completed: completed.length,
       percentage: Math.round((completed.length / assigned.length) * 100)
+    },
+    verificationResult: {
+      passed: taskResult.passed,
+      score: taskResult.score,
+      maxScore: taskResult.max_score,
+      checksPassed: `${taskResult.checks_passed}/${taskResult.checks_total}`
     }
   });
 }));

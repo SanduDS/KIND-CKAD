@@ -408,6 +408,15 @@ export const tasksApi = {
     return response.json();
   },
 
+  // Verify task answer
+  async verify(taskId: number) {
+    const response = await fetchWithAuth('/api/tasks/verify', {
+      method: 'POST',
+      body: JSON.stringify({ taskId }),
+    });
+    return response.json();
+  },
+
   // Complete current task and get next (CKAD exam progression)
   async complete(taskId: number) {
     const response = await fetchWithAuth('/api/tasks/session/complete', {

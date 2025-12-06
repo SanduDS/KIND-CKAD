@@ -78,6 +78,24 @@ router.post('/start', authenticate, sessionStartLimiter, asyncHandler(async (req
       terminalContainerId: terminalResult.containerId 
     });
 
+    // Initialize first namespace (q1) for first question
+    try {
+      await TerminalService.cleanTerminalForNextQuestion(
+        terminalResult.containerName,
+        1 // First question
+      );
+      logger.info('Initialized namespace for first question', {
+        sessionId: session.id,
+        namespace: 'q1',
+      });
+    } catch (error) {
+      logger.warn('Failed to initialize first namespace', {
+        sessionId: session.id,
+        error: error.message,
+      });
+      // Continue anyway - not critical for session creation
+    }
+
     // Assign random 20 tasks for CKAD exam (like real exam)
     try {
       const examTasks = TaskModel.getRandomExamTasks(20);

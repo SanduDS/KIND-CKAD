@@ -59,22 +59,40 @@ export const TaskModel = {
 
   /**
    * Get random 20 tasks for CKAD exam session
-   * Randomly selects 20 tasks weighted by difficulty
+   * Weighted distribution: 25% easy, 40% medium, 35% hard
    */
   getRandomExamTasks(count = 20) {
-    // First check if we have enough tasks
-    const totalCount = db.prepare('SELECT COUNT(*) as count FROM tasks').get().count;
+    // Calculate task distribution
+    const easyCount = Math.round(count * 0.25);    // 25% - 5 tasks
+    const mediumCount = Math.round(count * 0.40);  // 40% - 8 tasks
+    const hardCount = count - easyCount - mediumCount; // 35% - 7 tasks
     
-    if (totalCount < count) {
-      throw new Error(`Insufficient tasks in database. Need ${count}, have ${totalCount}`);
+    // Get available tasks for each difficulty
+    const easyTasks = db.prepare('SELECT * FROM tasks WHERE difficulty = ? ORDER BY RANDOM() LIMIT ?')
+      .all('easy', easyCount);
+    const mediumTasks = db.prepare('SELECT * FROM tasks WHERE difficulty = ? ORDER BY RANDOM() LIMIT ?')
+      .all('medium', mediumCount);
+    const hardTasks = db.prepare('SELECT * FROM tasks WHERE difficulty = ? ORDER BY RANDOM() LIMIT ?')
+      .all('hard', hardCount);
+    
+    // Combine all tasks
+    const allTasks = [...easyTasks, ...mediumTasks, ...hardTasks];
+    
+    // Verify we have enough tasks
+    if (allTasks.length < count) {
+      throw new Error(
+        `Insufficient tasks in database. Need ${count} (${easyCount} easy, ${mediumCount} medium, ${hardCount} hard), ` +
+        `have ${allTasks.length} (${easyTasks.length} easy, ${mediumTasks.length} medium, ${hardTasks.length} hard)`
+      );
     }
     
-    const stmt = db.prepare(`
-      SELECT * FROM tasks 
-      ORDER BY RANDOM() 
-      LIMIT ?
-    `);
-    return stmt.all(count);
+    // Shuffle the combined array to randomize order
+    for (let i = allTasks.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTasks[i], allTasks[j]] = [allTasks[j], allTasks[i]];
+    }
+    
+    return allTasks;
   },
 
   /**

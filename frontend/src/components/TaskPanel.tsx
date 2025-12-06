@@ -35,8 +35,10 @@ export default function TaskPanel() {
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<any>(null);
 
   useEffect(() => {
     loadCurrentTask();
@@ -51,6 +53,7 @@ export default function TaskPanel() {
         setCurrentTask(result.task);
         setProgress(result.progress);
         setIsCompleted(false);
+        setVerificationResult(null); // Reset verification when loading new task
       }
     } catch (error: any) {
       console.error('Failed to load current task:', error);
@@ -66,8 +69,42 @@ export default function TaskPanel() {
     }
   };
 
+  const handleVerifyAnswer = async () => {
+    if (!currentTask) return;
+
+    try {
+      setIsVerifying(true);
+      const result = await tasksApi.verify(currentTask.id);
+
+      if (result.success && result.verified) {
+        setVerificationResult(result);
+        
+        if (result.passed) {
+          toast.success(`✅ Correct! Score: ${result.score}/${result.maxScore}`, {
+            duration: 4000,
+          });
+        } else {
+          toast.error(`❌ Incorrect. Score: ${result.score}/${result.maxScore}. Please try again.`, {
+            duration: 5000,
+          });
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to verify answer:', error);
+      toast.error(error.message || 'Failed to verify answer');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleCompleteTask = async () => {
     if (!currentTask) return;
+
+    // Check if answer has been verified and passed
+    if (!verificationResult || !verificationResult.passed) {
+      toast.error('Please verify your answer first and ensure it passes before proceeding.');
+      return;
+    }
 
     try {
       setIsCompleting(true);
@@ -81,6 +118,7 @@ export default function TaskPanel() {
           setCurrentTask(result.nextTask);
           setProgress(result.progress);
           setIsCompleted(false);
+          setVerificationResult(null); // Reset for next task
         } else {
           // All tasks completed!
           setIsCompleted(true);
@@ -94,6 +132,8 @@ export default function TaskPanel() {
         toast.error('Please complete tasks in order');
       } else if (error.message?.includes('No active session')) {
         toast.error('Session expired. Please start a new session.');
+      } else if (error.message?.includes('verify your answer')) {
+        toast.error(error.message);
       } else {
         toast.error(error.message || 'Failed to mark task as complete');
       }
@@ -212,11 +252,27 @@ export default function TaskPanel() {
               <span className="px-2 py-1 bg-terminal-bg rounded border border-terminal-border">
                 {currentTask.category}
               </span>
+              {progress && progress.current > 0 && (
+                <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded border border-blue-500/30">
+                  Namespace: q{progress.current}
+                </span>
+              )}
             </div>
             <h2 className="text-xl font-bold text-terminal-accent">
               {currentTask.title}
             </h2>
           </div>
+
+          {/* Namespace Info Banner */}
+          {progress && progress.current === 1 && (
+            <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm">
+              <p className="text-blue-400">
+                💡 <strong>Tip:</strong> Each question uses a separate namespace (q1, q2, q3...). 
+                Your current namespace is already set to <code className="px-1.5 py-0.5 bg-blue-500/20 rounded">q{progress.current}</code>.
+                Work will be automatically cleaned when you move to the next question.
+              </p>
+            </div>
+          )}
 
           {/* Task Body (Markdown) */}
           <div className="markdown-body prose prose-invert prose-sm max-w-none">
@@ -224,14 +280,75 @@ export default function TaskPanel() {
               {currentTask.body}
             </ReactMarkdown>
           </div>
+
+          {/* Verification Result Display */}
+          {verificationResult && (
+            <div className={clsx(
+              'mt-6 p-4 rounded-lg border',
+              verificationResult.passed 
+                ? 'bg-green-500/10 border-green-500/30' 
+                : 'bg-red-500/10 border-red-500/30'
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                {verificationResult.passed ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-400" />
+                ) : (
+                  <span className="text-xl">❌</span>
+                )}
+                <span className="font-semibold">
+                  {verificationResult.passed ? 'Answer Verified ✓' : 'Verification Failed'}
+                </span>
+              </div>
+              <div className="text-sm text-terminal-muted">
+                <p>Score: {verificationResult.score}/{verificationResult.maxScore}</p>
+                <p>Checks Passed: {verificationResult.checksPassed}/{verificationResult.checksTotal}</p>
+                {!verificationResult.passed && (
+                  <p className="mt-2 text-yellow-400">
+                    💡 Review the requirements and try again
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer with Complete Button */}
-      <div className="flex-shrink-0 p-4 border-t border-terminal-border bg-terminal-bg/50">
+      {/* Footer with Verify and Complete Buttons */}
+      <div className="flex-shrink-0 p-4 border-t border-terminal-border bg-terminal-bg/50 space-y-2">
+        {/* Verify Answer Button */}
+        <button
+          onClick={handleVerifyAnswer}
+          disabled={isVerifying}
+          className={clsx(
+            'w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all',
+            verificationResult?.passed
+              ? 'bg-green-600/20 text-green-400 border border-green-500/30 hover:bg-green-600/30'
+              : 'bg-blue-600 text-white hover:bg-blue-700',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
+          {isVerifying ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Verifying...
+            </>
+          ) : verificationResult?.passed ? (
+            <>
+              <CheckCircle2 className="w-5 h-5" />
+              Verified ✓
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-5 h-5" />
+              Verify Answer
+            </>
+          )}
+        </button>
+
+        {/* Complete & Next Button */}
         <button
           onClick={handleCompleteTask}
-          disabled={isCompleting}
+          disabled={isCompleting || !verificationResult?.passed}
           className={clsx(
             'w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all',
             'bg-terminal-accent text-terminal-bg hover:bg-terminal-accent/90',
@@ -248,6 +365,10 @@ export default function TaskPanel() {
               <CheckCircle2 className="w-5 h-5" />
               Complete & Next Question
               <ChevronRight className="w-5 h-5" />
+            </>
+          )}
+        </button>
+      </div>
             </>
           )}
         </button>

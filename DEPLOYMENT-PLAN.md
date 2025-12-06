@@ -21,7 +21,7 @@ ssh root@173.212.204.27
 apt update && apt upgrade -y
 
 # Install required packages
-apt install -y docker.io docker-compose git curl wget sqlite3 nginx certbot python3-certbot-nginx
+apt install -y docker.io docker-compose git curl wget sqlite3 nginx certbot socat python3-certbot-nginx
 
 # Enable and start Docker
 systemctl enable docker

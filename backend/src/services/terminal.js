@@ -167,13 +167,99 @@ export const TerminalService = {
   async listContainers() {
     try {
       const { stdout } = await execAsync(
-        `docker ps -a --filter "name=term-" --format "{{.Names}}"`,
+        'docker ps --filter "name=term-" --format "{{.Names}}"',
         { timeout: 10000 }
       );
-      return stdout.trim().split('\n').filter(name => name.length > 0);
+      return stdout.trim().split('\n').filter(Boolean);
     } catch (error) {
       logger.error('Failed to list terminal containers', { error: error.message });
       return [];
+    }
+  },
+
+  /**
+   * Execute command in terminal container
+   */
+  async execCommand(containerName, command, timeout = 30000) {
+    try {
+      const { stdout, stderr } = await execAsync(
+        `docker exec ${containerName} /bin/bash -c "${command.replace(/"/g, '\\"')}"`,
+        { timeout }
+      );
+      return { success: true, stdout, stderr };
+    } catch (error) {
+      logger.error('Failed to execute command in container', {
+        containerName,
+        command,
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Clean terminal and prepare for next question
+   * Creates new namespace, makes it default, deletes previous namespace
+   */
+  async cleanTerminalForNextQuestion(containerName, currentQuestionNumber) {
+    try {
+      const newNamespace = `q${currentQuestionNumber}`;
+      const previousNamespace = currentQuestionNumber > 1 ? `q${currentQuestionNumber - 1}` : null;
+
+      logger.info('Cleaning terminal for next question', { 
+        containerName, 
+        currentQuestionNumber,
+        newNamespace,
+        previousNamespace
+      });
+
+      // Clear terminal screen
+      await this.execCommand(containerName, 'clear', 5000);
+
+      // Create new namespace
+      await this.execCommand(
+        containerName,
+        `kubectl create namespace ${newNamespace} 2>/dev/null || true`,
+        10000
+      );
+
+      // Set new namespace as default
+      await this.execCommand(
+        containerName,
+        `kubectl config set-context --current --namespace=${newNamespace}`,
+        10000
+      );
+
+      // Delete previous namespace (if exists and not default)
+      if (previousNamespace && previousNamespace !== 'default') {
+        await this.execCommand(
+          containerName,
+          `kubectl delete namespace ${previousNamespace} --ignore-not-found=true --timeout=30s`,
+          35000
+        );
+      }
+
+      logger.info('Terminal cleaned successfully', { 
+        containerName,
+        newNamespace,
+        deletedNamespace: previousNamespace
+      });
+
+      return {
+        success: true,
+        newNamespace,
+        deletedNamespace: previousNamespace,
+      };
+    } catch (error) {
+      logger.error('Failed to clean terminal', {
+        containerName,
+        currentQuestionNumber,
+        error: error.message,
+      });
+      return {
+        success: false,
+        error: error.message,
+      };
     }
   },
 
