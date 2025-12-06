@@ -43,19 +43,25 @@ apt update -y
 apt upgrade -y
 success "System updated"
 
-# Fix any broken packages first
-log "Fixing package conflicts..."
-apt --fix-broken install -y 2>/dev/null || true
-
-# Remove conflicting packages
-apt remove -y containerd 2>/dev/null || true
-
-# Install Docker (use docker.io from Ubuntu repos - no conflicts)
-log "Installing Docker..."
-apt install -y docker.io
-systemctl enable docker
-systemctl start docker
-success "Docker installed: $(docker --version)"
+# Check if Docker is already running
+if docker ps &>/dev/null; then
+    success "Docker already running: $(docker --version)"
+else
+    log "Installing Docker..."
+    # Fix broken packages
+    apt --fix-broken install -y 2>/dev/null || true
+    # Install docker.io
+    apt install -y docker.io
+    systemctl enable docker
+    systemctl start docker
+    # Wait for Docker to start
+    sleep 3
+    if docker ps &>/dev/null; then
+        success "Docker installed: $(docker --version)"
+    else
+        error "Docker failed to start. Check: journalctl -xeu docker.service"
+    fi
+fi
 
 # Install other dependencies
 log "Installing dependencies..."
