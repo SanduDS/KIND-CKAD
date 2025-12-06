@@ -124,8 +124,10 @@ process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Start server
-server.listen(config.port, () => {
+const host = process.env.HOST || '0.0.0.0';
+server.listen(config.port, host, () => {
   logger.info(`🚀 CKAD Practice Platform API started`, {
+    host,
     port: config.port,
     environment: config.env,
     frontendUrl: config.frontendUrl,
@@ -133,6 +135,15 @@ server.listen(config.port, () => {
 
   // Start cleanup scheduler
   startCleanupScheduler();
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  logger.error('Server error', { error: error.message, code: error.code });
+  if (error.code === 'EADDRINUSE') {
+    logger.error(`Port ${config.port} is already in use`);
+    process.exit(1);
+  }
 });
 
 export default app;

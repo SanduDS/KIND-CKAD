@@ -236,9 +236,13 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=$APP_DIR/backend
 EnvironmentFile=$APP_DIR/.env
+Environment=NODE_ENV=production
+Environment=HOST=0.0.0.0
 ExecStart=/usr/bin/node src/index.js
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
