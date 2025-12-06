@@ -93,25 +93,16 @@ export function initializeWebSocket(server) {
         }
       }
 
-      // Spawn PTY process using node-pty for full terminal support (vim, colors, etc.)
-      // Use script command to create a proper PTY inside the container
+      // Spawn PTY process using socat (KodeCloud's approach)
+      // socat provides the most robust terminal emulation with proper signal handling
       const containerName = `term-${session.cluster_name}`;
       
-      // Use 'script' utility to allocate a pseudo-TTY inside the container
-      // This allows vim, nano, and other interactive programs to work correctly
-      // -q: quiet mode (no "Script started" messages)
-      // -f: flush output immediately
-      // -c: run command
-      // /dev/null: don't save typescript file
-      ptyProcess = spawn('docker', [
-        'exec',
-        '-i',
-        '-e', 'TERM=xterm-256color',
-        containerName,
-        'script',
-        '-qfc',
-        '/bin/bash -l',
-        '/dev/null'
+      // Build docker exec command that socat will wrap
+      const dockerCmd = `docker exec -it -e TERM=xterm-256color -e COLORTERM=truecolor -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 ${containerName} /bin/bash -l`;
+      
+      ptyProcess = spawn('socat', [
+        '-,raw,echo=0',
+        `EXEC:"${dockerCmd}",pty,stderr,setsid,sigint,sane`
       ], {
         name: 'xterm-256color',
         cols: 80,
@@ -120,6 +111,7 @@ export function initializeWebSocket(server) {
         env: {
           ...process.env,
           TERM: 'xterm-256color',
+          COLORTERM: 'truecolor',
         },
       });
 

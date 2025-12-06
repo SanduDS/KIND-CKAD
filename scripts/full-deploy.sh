@@ -65,7 +65,7 @@ fi
 
 # Install other dependencies
 log "Installing dependencies..."
-apt install -y git curl wget sqlite3 nginx certbot python3-certbot-nginx jq ufw
+apt install -y git curl wget sqlite3 nginx certbot python3-certbot-nginx jq ufw socat
 success "Dependencies installed"
 
 # Install KIND
