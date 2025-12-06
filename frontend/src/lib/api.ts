@@ -9,23 +9,48 @@ const getApiUrl = () => {
   
   // Client-side: check if we should use relative URLs
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  const currentOrigin = window.location.origin;
   
-  // If NEXT_PUBLIC_API_URL is not set or matches current origin, use relative URLs
-  if (!envUrl || envUrl === window.location.origin || envUrl.startsWith(window.location.origin)) {
+  // If NEXT_PUBLIC_API_URL is not set, use relative URLs (same domain)
+  if (!envUrl) {
     return ''; // Empty string = relative URLs
   }
   
-  // Otherwise use the configured URL (for different domain/port)
-  return envUrl.replace(/\/api\/?$/, '');
+  // Parse the env URL
+  try {
+    const envUrlObj = new URL(envUrl);
+    const currentUrlObj = new URL(currentOrigin);
+    
+    // If same origin (hostname + port), use relative URLs
+    if (envUrlObj.origin === currentUrlObj.origin) {
+      return ''; // Relative URLs
+    }
+    
+    // If env URL starts with current origin, use relative
+    if (envUrl.startsWith(currentOrigin)) {
+      return ''; // Relative URLs
+    }
+    
+    // Different origin/port - use absolute URL (remove trailing /api)
+    return envUrl.replace(/\/api\/?$/, '');
+  } catch (e) {
+    // Invalid URL format - try string matching
+    if (envUrl === currentOrigin || envUrl.startsWith(currentOrigin)) {
+      return ''; // Relative URLs
+    }
+    // Remove trailing /api and return
+    return envUrl.replace(/\/api\/?$/, '');
+  }
 };
 
 const API_URL = getApiUrl();
 
-// Debug logging in development
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('[API] Base URL:', API_URL || '(relative)');
-  console.log('[API] Window origin:', window.location.origin);
-  console.log('[API] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+// Debug logging (always log in browser for troubleshooting)
+if (typeof window !== 'undefined') {
+  console.log('[API Config] Base URL:', API_URL || '(relative - same origin)');
+  console.log('[API Config] Window origin:', window.location.origin);
+  console.log('[API Config] NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL || '(not set)');
+  console.log('[API Config] Example request:', `${API_URL || ''}/api/auth/test-login`);
 }
 
 // Helper to get auth headers
@@ -133,24 +158,47 @@ async function refreshAccessToken(): Promise<boolean> {
 export const authApi = {
   // Test login (hardcoded credentials)
   async testLogin(email: string, password: string) {
+    const url = `${API_URL}/api/auth/test-login`;
+    console.log('[API] Test login request to:', url);
+    
     try {
-      const response = await fetch(`${API_URL}/api/auth/test-login`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('[API] Test login response status:', response.status, response.statusText);
+
       // Check content type
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
-        console.error('Login API returned HTML:', text.substring(0, 200));
+        console.error('[API] Login API returned non-JSON:', {
+          status: response.status,
+          contentType,
+          url,
+          preview: text.substring(0, 200)
+        });
         throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('[API] Test login success');
+      return data;
     } catch (error: any) {
-      console.error('Login request failed:', error);
+      console.error('[API] Login request failed:', {
+        error: error.message,
+        url,
+        apiUrl: API_URL || '(relative)',
+        stack: error.stack
+      });
+      
+      // Provide more helpful error messages
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error(`Cannot connect to backend. Check if backend is running at ${API_URL || 'same origin'}`);
+      }
+      
       throw error;
     }
   },

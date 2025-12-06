@@ -39,12 +39,38 @@ app.use(helmet({
 }));
 
 // CORS configuration
-app.use(cors({
-  origin: config.frontendUrl,
+// Allow requests from frontend URL or same origin
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, Postman, or same-origin)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Allow same-origin requests
+    if (origin === config.frontendUrl || origin.startsWith(config.frontendUrl)) {
+      return callback(null, true);
+    }
+    
+    // Allow requests from configured frontend URL
+    const allowedOrigins = [
+      config.frontendUrl,
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing
 app.use(express.json({ limit: '1mb' }));
