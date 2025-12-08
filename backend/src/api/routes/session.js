@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import config from '../../config/index.js';
+import db from '../../db/index.js';
 import SessionModel from '../../models/session.js';
 import TaskModel from '../../models/task.js';
 import PortModel from '../../models/port.js';
@@ -287,6 +288,54 @@ async function cleanupSession(sessionId, clusterName) {
     logger.info('Session cleanup completed successfully', { sessionId });
   }
 }
+
+/**
+ * GET /api/session/leaderboard
+ * Get leaderboard with user statistics
+ */
+router.get('/leaderboard', asyncHandler(async (req, res) => {
+  const { limit = 10 } = req.query;
+
+  // Get top users based on completed sessions and scores
+  const leaderboard = db.prepare(`
+    SELECT 
+      u.id,
+      u.email,
+      u.name,
+      COUNT(DISTINCT s.id) as total_sessions,
+      COUNT(DISTINCT CASE WHEN s.status = 'completed' THEN s.id END) as completed_sessions,
+      SUM(tr.score) as total_score,
+      SUM(tr.max_score) as total_possible_score,
+      ROUND(AVG(CASE WHEN tr.passed THEN 100.0 ELSE 0 END), 1) as pass_rate,
+      MAX(s.completed_at) as last_activity
+    FROM users u
+    LEFT JOIN sessions s ON u.id = s.user_id
+    LEFT JOIN task_results tr ON s.id = tr.session_id
+    GROUP BY u.id
+    HAVING completed_sessions > 0
+    ORDER BY total_score DESC, pass_rate DESC
+    LIMIT ?
+  `).all(parseInt(limit, 10));
+
+  res.json({
+    success: true,
+    leaderboard: leaderboard.map((entry, index) => ({
+      rank: index + 1,
+      userId: entry.id,
+      name: entry.name || entry.email.split('@')[0],
+      email: entry.email,
+      totalSessions: entry.total_sessions,
+      completedSessions: entry.completed_sessions,
+      totalScore: entry.total_score || 0,
+      totalPossibleScore: entry.total_possible_score || 0,
+      averageScore: entry.total_possible_score > 0 
+        ? Math.round((entry.total_score / entry.total_possible_score) * 100) 
+        : 0,
+      passRate: entry.pass_rate || 0,
+      lastActivity: entry.last_activity,
+    })),
+  });
+}));
 
 export { cleanupSession };
 export default router;

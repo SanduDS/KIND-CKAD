@@ -146,14 +146,7 @@ export default function LoginPage() {
                 Sign in to your account
               </h2>
 
-              {/* Test Login Note */}
-              <div className="bg-terminal-accent/10 border border-terminal-accent/30 rounded-lg p-3 mb-4">
-                <p className="text-xs text-terminal-accent">
-                  🧪 Test Login: test@ckad.com / test123
-                </p>
-              </div>
-
-              <form onSubmit={handleTestLogin} className="space-y-4">
+              <form onSubmit={handleSendOTP} className="space-y-4">
                 <div>
                   <label className="block text-sm text-terminal-muted mb-2">
                     Email address
@@ -171,30 +164,16 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm text-terminal-muted mb-2">
-                    Password
-                  </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter password"
-                    className="w-full px-4 py-3 bg-terminal-bg border border-terminal-border rounded-xl text-terminal-text placeholder-terminal-muted focus:border-terminal-accent focus:ring-1 focus:ring-terminal-accent transition-all"
-                    required
-                  />
-                </div>
-
                 <button
                   type="submit"
-                  disabled={isLoading || !email || !password}
+                  disabled={isLoading || !email}
                   className="w-full py-3 bg-terminal-accent text-terminal-bg font-semibold rounded-xl hover:bg-terminal-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all btn-glow flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      Sign In
+                      Continue with Email
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}

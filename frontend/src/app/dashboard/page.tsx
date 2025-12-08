@@ -19,6 +19,7 @@ import { sessionApi, authApi, platformApi } from '@/lib/api';
 import Timer from '@/components/Timer';
 import Terminal from '@/components/Terminal';
 import TaskPanel from '@/components/TaskPanel';
+import Leaderboard from '@/components/Leaderboard';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -309,6 +310,11 @@ export default function DashboardPage() {
                   <div className="text-2xl font-bold text-terminal-accent mb-1">1</div>
                   <div className="text-xs text-terminal-muted">K8s cluster</div>
                 </div>
+              </div>
+
+              {/* Leaderboard */}
+              <div className="mt-6">
+                <Leaderboard />
               </div>
             </div>
           </div>
