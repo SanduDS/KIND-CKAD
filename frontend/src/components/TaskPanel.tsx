@@ -302,11 +302,28 @@ export default function TaskPanel() {
               <div className="text-sm text-terminal-muted">
                 <p>Score: {verificationResult.score}/{verificationResult.maxScore}</p>
                 <p>Checks Passed: {verificationResult.checksPassed}/{verificationResult.checksTotal}</p>
-                {verificationResult.details && (
+                
+                {/* Show manual verification message if details is a string */}
+                {verificationResult.details && typeof verificationResult.details === 'string' && (
                   <p className="mt-2 text-blue-400 text-xs italic">
                     ℹ️ {verificationResult.details}
                   </p>
                 )}
+                
+                {/* Show check results if details is an array */}
+                {verificationResult.details && Array.isArray(verificationResult.details) && verificationResult.details.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {verificationResult.details.map((check: any, idx: number) => (
+                      <div key={idx} className="flex items-center gap-2 text-xs">
+                        <span>{check.passed ? '✅' : '❌'}</span>
+                        <span className={check.passed ? 'text-green-400' : 'text-red-400'}>
+                          {check.name}: {check.points} pts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
                 {!verificationResult.passed && !verificationResult.details && (
                   <p className="mt-2 text-yellow-400">
                     💡 Review the requirements and try again
