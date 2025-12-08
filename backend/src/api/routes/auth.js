@@ -11,54 +11,7 @@ import logger from '../../utils/logger.js';
 
 const router = Router();
 
-/**
- * POST /api/auth/test-login
- * HARDCODED TEST LOGIN - Remove in production
- * Email: test@ckad.com, Password: test123
- */
-router.post('/test-login', authLimiter, asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
 
-  // Hardcoded test credentials
-  const TEST_EMAIL = 'test@ckad.com';
-  const TEST_PASSWORD = 'test123';
-
-  if (email !== TEST_EMAIL || password !== TEST_PASSWORD) {
-    return res.status(401).json({
-      success: false,
-      error: 'InvalidCredentials',
-      message: 'Invalid email or password',
-    });
-  }
-
-  // Find or create test user
-  const user = UserModel.findOrCreate({ 
-    email: TEST_EMAIL, 
-    name: 'Test User' 
-  });
-
-  // Generate tokens
-  const { accessToken, refreshToken } = generateTokens(user.id);
-
-  // Store refresh token hash
-  const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-  const refreshExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  AuthModel.createRefreshToken(user.id, refreshTokenHash, refreshExpiry);
-
-  logger.info('Test user logged in', { userId: user.id, email });
-
-  res.json({
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-    },
-    accessToken,
-    refreshToken,
-    expiresIn: 900, // 15 minutes in seconds
-  });
-}));
 
 /**
  * POST /api/auth/email/otp
@@ -87,28 +40,13 @@ router.post('/email/otp', authLimiter, asyncHandler(async (req, res) => {
 
 /**
  * POST /api/auth/login
- * Simple email/password login (for testing)
+ * Email/password login - disabled, use OTP authentication
  */
 router.post('/login', authLimiter, asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    throw new ValidationError('Email and password are required');
-  }
-
-  // Hardcoded test credentials
-  const TEST_USERS = {
-    'test@ckad.local': 'test123',
-    'admin@ckad.local': 'admin123',
-    'user@ckad.local': 'user123',
-  };
-
-  if (TEST_USERS[email] !== password) {
-    return res.status(401).json({
-      error: 'InvalidCredentials',
-      message: 'Invalid email or password',
-    });
-  }
+  return res.status(403).json({
+    error: 'AuthMethodDisabled',
+    message: 'Password login is disabled. Please use email OTP authentication.',
+  });
 
   // Find or create user
   const user = UserModel.findOrCreate({ 
