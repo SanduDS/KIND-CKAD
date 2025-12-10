@@ -372,6 +372,22 @@ export const sessionApi = {
       throw error;
     }
   },
+
+  // Get user progress statistics
+  async getProgress() {
+    try {
+      const response = await fetchWithAuth('/api/session/progress');
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        throw new Error(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Session progress failed:', error);
+      throw error;
+    }
+  },
 };
 
 // ============ Tasks API ============

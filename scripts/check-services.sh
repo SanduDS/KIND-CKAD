@@ -70,3 +70,4 @@ journalctl -u ckad-frontend -n 5 --no-pager 2>/dev/null | tail -5 | sed 's/^/  /
 
 echo ""
 
+

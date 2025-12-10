@@ -156,3 +156,4 @@ echo "  Restart:          docker-compose -f docker-compose.local.yml restart"
 echo "  Rebuild:          docker-compose -f docker-compose.local.yml up -d --build"
 echo ""
 
+

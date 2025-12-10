@@ -211,11 +211,21 @@ fi
 
 success "Frontend built ($CHUNK_COUNT chunks, static files copied)"
 
-# Seed database
+# Seed database (clean install)
 log "Initializing database..."
 cd $APP_DIR/backend
+
+# Remove old database to ensure fresh install with all verification configs
+if [ -f "data/ckad.db" ]; then
+    log "Removing old database for fresh install..."
+    rm -f data/ckad.db
+fi
+
+# Create data directory if it doesn't exist
+mkdir -p data
+
 node src/db/seed.js
-success "Database initialized"
+success "Database initialized with 30 tasks (all with verification)"
 
 # =========================================
 # PHASE 3: Services Setup

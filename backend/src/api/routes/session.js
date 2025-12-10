@@ -290,50 +290,122 @@ async function cleanupSession(sessionId, clusterName) {
 }
 
 /**
- * GET /api/session/leaderboard
- * Get leaderboard with user statistics
+ * GET /api/session/progress
+ * Get current user's progress statistics
  */
-router.get('/leaderboard', asyncHandler(async (req, res) => {
-  const { limit = 10 } = req.query;
+router.get('/progress', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
 
-  // Get top users based on completed sessions and scores
-  const leaderboard = db.prepare(`
+  // Get user's session statistics
+  const stats = db.prepare(`
     SELECT 
-      u.id,
-      u.email,
-      u.name,
       COUNT(DISTINCT s.id) as total_sessions,
       COUNT(DISTINCT CASE WHEN s.status = 'completed' THEN s.id END) as completed_sessions,
+      COUNT(DISTINCT CASE WHEN s.status = 'active' THEN s.id END) as active_sessions,
       SUM(tr.score) as total_score,
       SUM(tr.max_score) as total_possible_score,
-      ROUND(AVG(CASE WHEN tr.passed THEN 100.0 ELSE 0 END), 1) as pass_rate,
-      MAX(s.completed_at) as last_activity
-    FROM users u
-    LEFT JOIN sessions s ON u.id = s.user_id
+      COUNT(DISTINCT tr.id) as total_tasks_attempted,
+      COUNT(DISTINCT CASE WHEN tr.passed THEN tr.id END) as tasks_passed,
+      MAX(s.completed_at) as last_session
+    FROM sessions s
     LEFT JOIN task_results tr ON s.id = tr.session_id
-    GROUP BY u.id
-    HAVING completed_sessions > 0
-    ORDER BY total_score DESC, pass_rate DESC
-    LIMIT ?
-  `).all(parseInt(limit, 10));
+    WHERE s.user_id = ?
+  `).get(userId);
+
+  // Get recent sessions with details
+  const recentSessions = db.prepare(`
+    SELECT 
+      s.id,
+      s.status,
+      s.start_time,
+      s.completed_at,
+      COUNT(tr.id) as tasks_completed,
+      SUM(tr.score) as session_score,
+      SUM(tr.max_score) as session_max_score,
+      COUNT(CASE WHEN tr.passed THEN 1 END) as tasks_passed
+    FROM sessions s
+    LEFT JOIN task_results tr ON s.id = tr.session_id
+    WHERE s.user_id = ?
+    GROUP BY s.id
+    ORDER BY s.start_time DESC
+    LIMIT 10
+  `).all(userId);
+
+  // Get difficulty breakdown
+  const difficultyStats = db.prepare(`
+    SELECT 
+      t.difficulty,
+      COUNT(tr.id) as attempted,
+      COUNT(CASE WHEN tr.passed THEN 1 END) as passed,
+      ROUND(AVG(tr.score * 100.0 / tr.max_score), 1) as avg_score_pct
+    FROM task_results tr
+    JOIN tasks t ON tr.task_id = t.id
+    JOIN sessions s ON tr.session_id = s.id
+    WHERE s.user_id = ?
+    GROUP BY t.difficulty
+  `).all(userId);
+
+  // Get category breakdown
+  const categoryStats = db.prepare(`
+    SELECT 
+      t.category,
+      COUNT(tr.id) as attempted,
+      COUNT(CASE WHEN tr.passed THEN 1 END) as passed,
+      ROUND(AVG(tr.score * 100.0 / tr.max_score), 1) as avg_score_pct
+    FROM task_results tr
+    JOIN tasks t ON tr.task_id = t.id
+    JOIN sessions s ON tr.session_id = s.id
+    WHERE s.user_id = ?
+    GROUP BY t.category
+  `).all(userId);
 
   res.json({
     success: true,
-    leaderboard: leaderboard.map((entry, index) => ({
-      rank: index + 1,
-      userId: entry.id,
-      name: entry.name || entry.email.split('@')[0],
-      email: entry.email,
-      totalSessions: entry.total_sessions,
-      completedSessions: entry.completed_sessions,
-      totalScore: entry.total_score || 0,
-      totalPossibleScore: entry.total_possible_score || 0,
-      averageScore: entry.total_possible_score > 0 
-        ? Math.round((entry.total_score / entry.total_possible_score) * 100) 
-        : 0,
-      passRate: entry.pass_rate || 0,
-      lastActivity: entry.last_activity,
-    })),
+    progress: {
+      overview: {
+        totalSessions: stats.total_sessions || 0,
+        completedSessions: stats.completed_sessions || 0,
+        activeSessions: stats.active_sessions || 0,
+        totalScore: stats.total_score || 0,
+        totalPossibleScore: stats.total_possible_score || 0,
+        averageScore: stats.total_possible_score > 0 
+          ? Math.round((stats.total_score / stats.total_possible_score) * 100) 
+          : 0,
+        totalTasksAttempted: stats.total_tasks_attempted || 0,
+        tasksPassed: stats.tasks_passed || 0,
+        passRate: stats.total_tasks_attempted > 0
+          ? Math.round((stats.tasks_passed / stats.total_tasks_attempted) * 100)
+          : 0,
+        lastSession: stats.last_session,
+      },
+      recentSessions: recentSessions.map(session => ({
+        id: session.id,
+        status: session.status,
+        startTime: session.start_time,
+        completedAt: session.completed_at,
+        tasksCompleted: session.tasks_completed || 0,
+        score: session.session_score || 0,
+        maxScore: session.session_max_score || 0,
+        scorePercentage: session.session_max_score > 0
+          ? Math.round((session.session_score / session.session_max_score) * 100)
+          : 0,
+        tasksPassed: session.tasks_passed || 0,
+      })),
+      byDifficulty: difficultyStats.map(stat => ({
+        difficulty: stat.difficulty,
+        attempted: stat.attempted,
+        passed: stat.passed,
+        passRate: stat.attempted > 0 ? Math.round((stat.passed / stat.attempted) * 100) : 0,
+        avgScore: stat.avg_score_pct || 0,
+      })),
+      byCategory: categoryStats.map(stat => ({
+        category: stat.category,
+        attempted: stat.attempted,
+        passed: stat.passed,
+        passRate: stat.attempted > 0 ? Math.round((stat.passed / stat.attempted) * 100) : 0,
+        avgScore: stat.avg_score_pct || 0,
+      })),
+    },
   });
 }));
 

@@ -12,6 +12,7 @@ import {
   Activity,
   AlertCircle,
   RefreshCw,
+  TrendingUp,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useAuthStore, useSessionStore } from '@/lib/store';
@@ -19,7 +20,6 @@ import { sessionApi, authApi, platformApi } from '@/lib/api';
 import Timer from '@/components/Timer';
 import Terminal from '@/components/Terminal';
 import TaskPanel from '@/components/TaskPanel';
-import Leaderboard from '@/components/Leaderboard';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -230,6 +230,14 @@ export default function DashboardPage() {
 
           {/* User Menu */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/progress')}
+              className="flex items-center gap-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg hover:border-terminal-accent transition-colors"
+              title="View Progress"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline text-sm">Progress</span>
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium">{user?.name}</p>
               <p className="text-xs text-terminal-muted">{user?.email}</p>
@@ -310,11 +318,6 @@ export default function DashboardPage() {
                   <div className="text-2xl font-bold text-terminal-accent mb-1">1</div>
                   <div className="text-xs text-terminal-muted">K8s cluster</div>
                 </div>
-              </div>
-
-              {/* Leaderboard */}
-              <div className="mt-6">
-                <Leaderboard />
               </div>
             </div>
           </div>
