@@ -100,6 +100,7 @@ const initSchema = () => {
       difficulty TEXT DEFAULT 'medium' CHECK(difficulty IN ('easy', 'medium', 'hard')),
       category TEXT,
       verification_config TEXT,
+      setup_script TEXT,
       max_score INTEGER DEFAULT 10,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )

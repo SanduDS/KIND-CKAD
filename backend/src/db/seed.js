@@ -975,6 +975,7 @@ kubectl rollout history deployment web-app
 The deployment should be running nginx:1.21 and the rollout history should show the change.`,
       difficulty: 'easy',
       category: 'Deployments',
+      setupScript: 'kubectl create deployment web-app --image=nginx:1.20 --replicas=3',
       verificationConfig: {
         checks: [
           {
@@ -1931,6 +1932,7 @@ kubectl describe hpa api-hpa
 \`\`\``,
       difficulty: 'medium',
       category: 'Scaling',
+      setupScript: 'kubectl create deployment api-server --image=nginx:1.21 --replicas=3 && kubectl set resources deployment api-server --requests=cpu=100m',
       verificationConfig: {
         checks: [
           {
@@ -2230,6 +2232,7 @@ kubectl rollout status deployment/api-service
 \`\`\``,
       difficulty: 'easy',
       category: 'Deployments',
+      setupScript: 'kubectl create deployment api-service --image=nginx:1.20 --replicas=3 && kubectl set image deployment/api-service nginx=nginx:1.21 --record',
       verificationConfig: {
         checks: [
           {
@@ -2374,8 +2377,8 @@ kubectl describe service external-db
   ];
 
   const insertStmt = db.prepare(`
-    INSERT OR IGNORE INTO tasks (title, body, difficulty, category, verification_config, max_score)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO tasks (title, body, difficulty, category, verification_config, setup_script, max_score)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertMany = db.transaction((tasks) => {
@@ -2386,6 +2389,7 @@ kubectl describe service external-db
         task.difficulty, 
         task.category,
         task.verificationConfig ? JSON.stringify(task.verificationConfig) : null,
+        task.setupScript || null,
         task.maxScore || 10
       );
     }

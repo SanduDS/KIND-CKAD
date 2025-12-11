@@ -171,6 +171,7 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
   const nextIndex = currentIndex + 1;
   
   // Clean terminal for next question (create new namespace, delete old one)
+  // And run setup script if the next task has one
   if (nextIndex < assigned.length) {
     try {
       const containerName = `term-${session.cluster_name}`;
@@ -185,6 +186,38 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
         sessionId: session.id,
         questionNumber: nextIndex + 1,
       });
+      
+      // Execute setup script for the next task if it exists
+      const nextTaskId = assigned[nextIndex];
+      const nextTaskData = TaskModel.findById(nextTaskId);
+      
+      if (nextTaskData && nextTaskData.setup_script) {
+        logger.info('Executing setup script for next task', {
+          sessionId: session.id,
+          taskId: nextTaskId,
+          questionNumber: nextIndex + 1,
+        });
+        
+        try {
+          await TerminalService.execCommand(
+            containerName,
+            nextTaskData.setup_script,
+            30000 // 30 second timeout
+          );
+          
+          logger.info('Setup script executed successfully', {
+            sessionId: session.id,
+            taskId: nextTaskId,
+          });
+        } catch (setupError) {
+          logger.error('Setup script execution failed', {
+            sessionId: session.id,
+            taskId: nextTaskId,
+            error: setupError.message,
+          });
+          // Don't fail the transition - log and continue
+        }
+      }
     } catch (error) {
       // Log but don't fail - terminal cleaning is not critical
       logger.warn('Failed to clean terminal for next question', {
