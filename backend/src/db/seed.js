@@ -1816,6 +1816,561 @@ kubectl get svc myapp-service
       },
       maxScore: 10,
     },
+    {
+      title: 'Network Policies',
+      body: `## Task: Configure Network Policies
+
+Create a NetworkPolicy named \`db-policy\` in the \`default\` namespace that:
+
+- Applies to pods with label \`app=database\`
+- Allows ingress from pods with label \`app=backend\` on port 3306
+- Denies all other ingress traffic
+
+### Verification
+
+\`\`\`bash
+kubectl get networkpolicy db-policy
+kubectl describe networkpolicy db-policy
+\`\`\``,
+      difficulty: 'hard',
+      category: 'Network',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'NetworkPolicy exists',
+            command: 'kubectl get networkpolicy db-policy -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'db-policy',
+            points: 2,
+          },
+          {
+            name: 'Pod selector correct',
+            command: 'kubectl get networkpolicy db-policy -o jsonpath=\'{.spec.podSelector.matchLabels.app}\'',
+            type: 'contains',
+            expected: 'database',
+            points: 2,
+          },
+          {
+            name: 'Ingress from backend allowed',
+            command: 'kubectl get networkpolicy db-policy -o jsonpath=\'{.spec.ingress[0].from[0].podSelector.matchLabels.app}\'',
+            type: 'contains',
+            expected: 'backend',
+            points: 3,
+          },
+          {
+            name: 'Port 3306 configured',
+            command: 'kubectl get networkpolicy db-policy -o jsonpath=\'{.spec.ingress[0].ports[0].port}\'',
+            type: 'contains',
+            expected: '3306',
+            points: 3,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'PodDisruptionBudget',
+      body: `## Task: Create PodDisruptionBudget
+
+Create a PodDisruptionBudget named \`web-pdb\` that:
+
+- Targets pods with label \`app=web\`
+- Ensures at least 2 pods are always available
+
+### Verification
+
+\`\`\`bash
+kubectl get pdb web-pdb
+kubectl describe pdb web-pdb
+\`\`\``,
+      difficulty: 'medium',
+      category: 'Availability',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'PodDisruptionBudget exists',
+            command: 'kubectl get pdb web-pdb -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'web-pdb',
+            points: 3,
+          },
+          {
+            name: 'Min available is 2',
+            command: 'kubectl get pdb web-pdb -o jsonpath=\'{.spec.minAvailable}\'',
+            type: 'contains',
+            expected: '2',
+            points: 3,
+          },
+          {
+            name: 'Selector matches web',
+            command: 'kubectl get pdb web-pdb -o jsonpath=\'{.spec.selector.matchLabels.app}\'',
+            type: 'contains',
+            expected: 'web',
+            points: 4,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Horizontal Pod Autoscaler',
+      body: `## Task: Configure HPA
+
+Create a HorizontalPodAutoscaler named \`api-hpa\` that:
+
+- Targets deployment \`api-server\`
+- Min replicas: 2
+- Max replicas: 10
+- Target CPU utilization: 70%
+
+### Verification
+
+\`\`\`bash
+kubectl get hpa api-hpa
+kubectl describe hpa api-hpa
+\`\`\``,
+      difficulty: 'medium',
+      category: 'Scaling',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'HPA exists',
+            command: 'kubectl get hpa api-hpa -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'api-hpa',
+            points: 2,
+          },
+          {
+            name: 'Min replicas is 2',
+            command: 'kubectl get hpa api-hpa -o jsonpath=\'{.spec.minReplicas}\'',
+            type: 'contains',
+            expected: '2',
+            points: 2,
+          },
+          {
+            name: 'Max replicas is 10',
+            command: 'kubectl get hpa api-hpa -o jsonpath=\'{.spec.maxReplicas}\'',
+            type: 'contains',
+            expected: '10',
+            points: 2,
+          },
+          {
+            name: 'Target CPU utilization',
+            command: 'kubectl get hpa api-hpa -o jsonpath=\'{.spec.targetCPUUtilizationPercentage}\'',
+            type: 'contains',
+            expected: '70',
+            points: 2,
+          },
+          {
+            name: 'Targets api-server deployment',
+            command: 'kubectl get hpa api-hpa -o jsonpath=\'{.spec.scaleTargetRef.name}\'',
+            type: 'contains',
+            expected: 'api-server',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'DaemonSet Creation',
+      body: `## Task: Create a DaemonSet
+
+Create a DaemonSet named \`log-collector\` that:
+
+- Runs on all nodes
+- Image: \`fluentd:v1.14\`
+- Container name: \`fluentd\`
+- Mounts host path \`/var/log\` to \`/var/log\` in the container
+
+### Verification
+
+\`\`\`bash
+kubectl get daemonset log-collector
+kubectl describe daemonset log-collector
+\`\`\``,
+      difficulty: 'medium',
+      category: 'DaemonSets',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'DaemonSet exists',
+            command: 'kubectl get daemonset log-collector -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'log-collector',
+            points: 2,
+          },
+          {
+            name: 'Correct image',
+            command: 'kubectl get daemonset log-collector -o jsonpath=\'{.spec.template.spec.containers[0].image}\'',
+            type: 'contains',
+            expected: 'fluentd:v1.14',
+            points: 2,
+          },
+          {
+            name: 'Container name correct',
+            command: 'kubectl get daemonset log-collector -o jsonpath=\'{.spec.template.spec.containers[0].name}\'',
+            type: 'contains',
+            expected: 'fluentd',
+            points: 2,
+          },
+          {
+            name: 'Volume mount configured',
+            command: 'kubectl get daemonset log-collector -o jsonpath=\'{.spec.template.spec.containers[0].volumeMounts[0].mountPath}\'',
+            type: 'contains',
+            expected: '/var/log',
+            points: 2,
+          },
+          {
+            name: 'Host path configured',
+            command: 'kubectl get daemonset log-collector -o jsonpath=\'{.spec.template.spec.volumes[0].hostPath.path}\'',
+            type: 'contains',
+            expected: '/var/log',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Pod with Multiple Containers',
+      body: `## Task: Create Multi-Container Pod
+
+Create a pod named \`web-logger\` with two containers:
+
+1. Main container:
+   - Name: \`nginx\`
+   - Image: \`nginx:1.21\`
+   
+2. Sidecar container:
+   - Name: \`log-sidecar\`
+   - Image: \`busybox:1.35\`
+   - Command: \`sh -c "tail -f /var/log/nginx/access.log"\`
+
+Share a volume named \`logs\` between them mounted at \`/var/log/nginx\`
+
+### Verification
+
+\`\`\`bash
+kubectl get pod web-logger
+kubectl describe pod web-logger
+\`\`\``,
+      difficulty: 'medium',
+      category: 'Pods',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Pod exists',
+            command: 'kubectl get pod web-logger -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'web-logger',
+            points: 2,
+          },
+          {
+            name: 'Two containers present',
+            command: 'kubectl get pod web-logger -o jsonpath=\'{.spec.containers[*].name}\' | wc -w',
+            type: 'contains',
+            expected: '2',
+            points: 2,
+          },
+          {
+            name: 'Nginx container exists',
+            command: 'kubectl get pod web-logger -o jsonpath=\'{.spec.containers[?(@.name=="nginx")].image}\'',
+            type: 'contains',
+            expected: 'nginx',
+            points: 2,
+          },
+          {
+            name: 'Sidecar container exists',
+            command: 'kubectl get pod web-logger -o jsonpath=\'{.spec.containers[?(@.name=="log-sidecar")].image}\'',
+            type: 'contains',
+            expected: 'busybox',
+            points: 2,
+          },
+          {
+            name: 'Shared volume configured',
+            command: 'kubectl get pod web-logger -o jsonpath=\'{.spec.volumes[0].name}\'',
+            type: 'contains',
+            expected: 'logs',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'ConfigMap from File',
+      body: `## Task: Create ConfigMap from Literal
+
+Create a ConfigMap named \`app-properties\` with the following data:
+
+- \`database.host\`: \`mysql.default.svc.cluster.local\`
+- \`database.port\`: \`3306\`
+- \`app.mode\`: \`production\`
+
+Then create a pod named \`app-pod\` that uses this ConfigMap as environment variables.
+
+### Verification
+
+\`\`\`bash
+kubectl get configmap app-properties
+kubectl get pod app-pod
+\`\`\``,
+      difficulty: 'easy',
+      category: 'Configuration',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'ConfigMap exists',
+            command: 'kubectl get configmap app-properties -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'app-properties',
+            points: 2,
+          },
+          {
+            name: 'Database host configured',
+            command: 'kubectl get configmap app-properties -o jsonpath=\'{.data.database\\.host}\'',
+            type: 'contains',
+            expected: 'mysql',
+            points: 2,
+          },
+          {
+            name: 'Database port configured',
+            command: 'kubectl get configmap app-properties -o jsonpath=\'{.data.database\\.port}\'',
+            type: 'contains',
+            expected: '3306',
+            points: 2,
+          },
+          {
+            name: 'Pod exists',
+            command: 'kubectl get pod app-pod -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'app-pod',
+            points: 2,
+          },
+          {
+            name: 'Pod uses ConfigMap',
+            command: 'kubectl get pod app-pod -o jsonpath=\'{.spec.containers[0].envFrom[0].configMapRef.name}\'',
+            type: 'contains',
+            expected: 'app-properties',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Pod Scheduling with Node Selector',
+      body: `## Task: Schedule Pod on Specific Node
+
+Label a node with \`disktype=ssd\`
+
+Create a pod named \`fast-storage-pod\` that:
+
+- Image: \`redis:6.2\`
+- Must be scheduled only on nodes with label \`disktype=ssd\`
+
+### Verification
+
+\`\`\`bash
+kubectl get pod fast-storage-pod -o wide
+kubectl describe pod fast-storage-pod
+\`\`\``,
+      difficulty: 'medium',
+      category: 'Scheduling',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Pod exists',
+            command: 'kubectl get pod fast-storage-pod -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'fast-storage-pod',
+            points: 2,
+          },
+          {
+            name: 'Correct image',
+            command: 'kubectl get pod fast-storage-pod -o jsonpath=\'{.spec.containers[0].image}\'',
+            type: 'contains',
+            expected: 'redis:6.2',
+            points: 2,
+          },
+          {
+            name: 'Node selector configured',
+            command: 'kubectl get pod fast-storage-pod -o jsonpath=\'{.spec.nodeSelector.disktype}\'',
+            type: 'contains',
+            expected: 'ssd',
+            points: 3,
+          },
+          {
+            name: 'Pod is running',
+            command: 'kubectl get pod fast-storage-pod -o jsonpath=\'{.status.phase}\'',
+            type: 'contains',
+            expected: 'Running',
+            points: 3,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Deployment Rollback',
+      body: `## Task: Rollback a Deployment
+
+A deployment named \`api-service\` exists but the latest version has issues.
+
+1. Check the rollout history
+2. Rollback to the previous revision
+3. Verify the rollback was successful
+
+### Verification
+
+\`\`\`bash
+kubectl rollout history deployment/api-service
+kubectl rollout status deployment/api-service
+\`\`\``,
+      difficulty: 'easy',
+      category: 'Deployments',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Deployment exists',
+            command: 'kubectl get deployment api-service -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'api-service',
+            points: 2,
+          },
+          {
+            name: 'Deployment has annotations',
+            command: 'kubectl get deployment api-service -o jsonpath=\'{.metadata.annotations.deployment\\.kubernetes\\.io/revision}\'',
+            type: 'contains',
+            expected: '',
+            points: 2,
+          },
+          {
+            name: 'All replicas available',
+            command: 'kubectl get deployment api-service -o jsonpath=\'{.status.availableReplicas}\'',
+            type: 'contains',
+            expected: '',
+            points: 3,
+          },
+          {
+            name: 'Rollout complete',
+            command: 'kubectl rollout status deployment/api-service --timeout=10s 2>&1 | grep -c "successfully rolled out"',
+            type: 'contains',
+            expected: '1',
+            points: 3,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Job with Parallelism',
+      body: `## Task: Create Parallel Job
+
+Create a Job named \`batch-processor\` that:
+
+- Image: \`perl:5.34\`
+- Command: \`perl -Mbignum=bpi -wle "print bpi(2000)"\`
+- Completions: 5
+- Parallelism: 2
+- Backoff limit: 4
+
+### Verification
+
+\`\`\`bash
+kubectl get job batch-processor
+kubectl describe job batch-processor
+\`\`\``,
+      difficulty: 'medium',
+      category: 'Jobs',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Job exists',
+            command: 'kubectl get job batch-processor -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'batch-processor',
+            points: 2,
+          },
+          {
+            name: 'Completions is 5',
+            command: 'kubectl get job batch-processor -o jsonpath=\'{.spec.completions}\'',
+            type: 'contains',
+            expected: '5',
+            points: 2,
+          },
+          {
+            name: 'Parallelism is 2',
+            command: 'kubectl get job batch-processor -o jsonpath=\'{.spec.parallelism}\'',
+            type: 'contains',
+            expected: '2',
+            points: 2,
+          },
+          {
+            name: 'Backoff limit is 4',
+            command: 'kubectl get job batch-processor -o jsonpath=\'{.spec.backoffLimit}\'',
+            type: 'contains',
+            expected: '4',
+            points: 2,
+          },
+          {
+            name: 'Correct image',
+            command: 'kubectl get job batch-processor -o jsonpath=\'{.spec.template.spec.containers[0].image}\'',
+            type: 'contains',
+            expected: 'perl',
+            points: 2,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
+    {
+      title: 'Service with External Name',
+      body: `## Task: Create ExternalName Service
+
+Create a Service named \`external-db\` of type ExternalName that:
+
+- Maps to external database: \`db.example.com\`
+- Port: 5432
+
+This allows pods to access the external database using the service name.
+
+### Verification
+
+\`\`\`bash
+kubectl get service external-db
+kubectl describe service external-db
+\`\`\``,
+      difficulty: 'easy',
+      category: 'Services',
+      verificationConfig: {
+        checks: [
+          {
+            name: 'Service exists',
+            command: 'kubectl get service external-db -o jsonpath=\'{.metadata.name}\'',
+            type: 'contains',
+            expected: 'external-db',
+            points: 3,
+          },
+          {
+            name: 'Service type is ExternalName',
+            command: 'kubectl get service external-db -o jsonpath=\'{.spec.type}\'',
+            type: 'contains',
+            expected: 'ExternalName',
+            points: 3,
+          },
+          {
+            name: 'External name configured',
+            command: 'kubectl get service external-db -o jsonpath=\'{.spec.externalName}\'',
+            type: 'contains',
+            expected: 'db.example.com',
+            points: 4,
+          },
+        ],
+      },
+      maxScore: 10,
+    },
   ];
 
   const insertStmt = db.prepare(`

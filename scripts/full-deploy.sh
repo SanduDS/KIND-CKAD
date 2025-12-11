@@ -225,7 +225,7 @@ fi
 mkdir -p data
 
 node src/db/seed.js
-success "Database initialized with 30 tasks (all with verification)"
+success "Database initialized with 40 tasks (all with verification)"
 
 # =========================================
 # PHASE 3: Services Setup

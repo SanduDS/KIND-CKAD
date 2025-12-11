@@ -39,18 +39,18 @@ success "Database found: $DB_PATH"
 TOTAL_TASKS=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM tasks;")
 log "Total tasks in database: $TOTAL_TASKS"
 
-if [ "$TOTAL_TASKS" -ne 30 ]; then
-    warn "Expected 30 tasks, found $TOTAL_TASKS"
+if [ "$TOTAL_TASKS" -ne 40 ]; then
+    warn "Expected 40 tasks, found $TOTAL_TASKS"
 else
-    success "Correct number of tasks (30)"
+    success "Correct number of tasks (40)"
 fi
 
 # Check tasks with verification configs
 TASKS_WITH_VERIFICATION=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM tasks WHERE verification_config IS NOT NULL AND verification_config != 'null';")
 log "Tasks with verification configs: $TASKS_WITH_VERIFICATION"
 
-if [ "$TASKS_WITH_VERIFICATION" -ne 30 ]; then
-    error "Only $TASKS_WITH_VERIFICATION tasks have verification configs (expected 30)"
+if [ "$TASKS_WITH_VERIFICATION" -ne 40 ]; then
+    error "Only $TASKS_WITH_VERIFICATION tasks have verification configs (expected 40)"
     
     # Show tasks missing verification
     echo ""
@@ -60,7 +60,7 @@ if [ "$TASKS_WITH_VERIFICATION" -ne 30 ]; then
     done
     exit 1
 else
-    success "All 30 tasks have verification configs"
+    success "All 40 tasks have verification configs"
 fi
 
 # Check difficulty distribution

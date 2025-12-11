@@ -86,24 +86,35 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
       // Connect WebSocket
       connectWebSocket(xterm);
 
-      // Handle resize
+      // Handle resize with debouncing
+      let resizeTimeout: NodeJS.Timeout;
       const handleResize = () => {
-        if (fitAddon) {
-          fitAddon.fit();
-          // Send resize to server
-          if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(
-              JSON.stringify({
-                type: 'resize',
-                cols: xterm.cols,
-                rows: xterm.rows,
-              })
-            );
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          if (fitAddon && xterm) {
+            fitAddon.fit();
+            // Send resize to server
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(
+                JSON.stringify({
+                  type: 'resize',
+                  cols: xterm.cols,
+                  rows: xterm.rows,
+                })
+              );
+            }
           }
-        }
+        }, 50);
       };
 
       window.addEventListener('resize', handleResize);
+      
+      // Initial fit after a short delay to ensure container is sized
+      setTimeout(() => {
+        if (fitAddon) {
+          fitAddon.fit();
+        }
+      }, 100);
 
       // Handle terminal input
       xterm.onData((data: string) => {
@@ -130,7 +141,20 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
       ws.onopen = () => {
         setIsConnected(true);
         setIsConnecting(false);
-        // Don't write anything - let bash show its prompt
+        
+        // Send initial terminal size immediately after connection
+        setTimeout(() => {
+          if (fitAddon) {
+            fitAddon.fit();
+            ws.send(
+              JSON.stringify({
+                type: 'resize',
+                cols: xterm.cols,
+                rows: xterm.rows,
+              })
+            );
+          }
+        }, 100);
       };
 
       ws.onmessage = (event) => {
