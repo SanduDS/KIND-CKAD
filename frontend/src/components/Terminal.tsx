@@ -68,6 +68,10 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
         cursorBlink: true,
         cursorStyle: 'block',
         scrollback: 5000,
+        convertEol: true,
+        windowOptions: {
+          setWinLines: true,
+        },
       });
 
       // Add addons

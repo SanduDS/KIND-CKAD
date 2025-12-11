@@ -98,7 +98,8 @@ export function initializeWebSocket(server) {
       const containerName = `term-${session.cluster_name}`;
       
       // Build docker exec command that socat will wrap
-      const dockerCmd = `docker exec -it -e TERM=xterm-256color -e COLORTERM=truecolor -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 ${containerName} /bin/bash`;
+      // Set COLUMNS and LINES explicitly to help bash handle line wrapping
+      const dockerCmd = `docker exec -it -e TERM=xterm-256color -e COLORTERM=truecolor -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -e COLUMNS=120 -e LINES=30 ${containerName} /bin/bash`;
       
       ptyProcess = spawn('socat', [
         '-,raw,echo=0',
@@ -112,6 +113,8 @@ export function initializeWebSocket(server) {
           ...process.env,
           TERM: 'xterm-256color',
           COLORTERM: 'truecolor',
+          COLUMNS: '120',
+          LINES: '30',
         },
       });
 
