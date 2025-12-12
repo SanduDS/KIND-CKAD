@@ -9,7 +9,7 @@ const seedTasks = () => {
       title: 'Create a Pod',
       body: `## Task: Create a Pod
 
-Create a pod named \`nginx-pod\` in the \`default\` namespace with the following specifications:
+Create a pod named \`nginx-pod\` with the following specifications:
 
 - Image: \`nginx:1.21\`
 - Container name: \`nginx-container\`
@@ -533,7 +533,7 @@ kubectl describe pod probed-app | grep -A5 "Readiness"
       title: 'Network Policy',
       body: `## Task: Create a Network Policy
 
-Create a NetworkPolicy named \`api-network-policy\` in the \`default\` namespace that:
+Create a NetworkPolicy named \`api-network-policy\` that:
 
 1. Applies to pods with label \`app=api\`
 2. Allows ingress traffic only from pods with label \`app=frontend\`
@@ -779,12 +779,17 @@ kubectl describe ingress web-ingress
 
 3. Create a RoleBinding named \`pod-reader-binding\` that binds the role to the service account
 
-4. Create a pod named \`sa-pod\` using the service account
+4. Create a pod named \`sa-pod\` that uses the service account:
+   - Image: \`nginx:1.21\`
+   - ServiceAccount: \`pod-reader-sa\`
 
 ### Verification
 
 \`\`\`bash
-kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa
+kubectl get sa pod-reader-sa
+kubectl get role pod-reader
+kubectl get rolebinding pod-reader-binding
+kubectl get pod sa-pod
 \`\`\``,
       difficulty: 'hard',
       category: 'Security',
@@ -802,7 +807,7 @@ kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa
             command: 'kubectl get role pod-reader -o jsonpath=\'{.metadata.name}\'',
             type: 'contains',
             expected: 'pod-reader',
-            points: 2,
+            points: 1,
           },
           {
             name: 'RoleBinding exists',
@@ -819,11 +824,18 @@ kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa
             points: 2,
           },
           {
-            name: 'Can get pods',
-            command: 'kubectl auth can-i get pods --as=system:serviceaccount:default:pod-reader-sa',
+            name: 'Pod uses correct ServiceAccount',
+            command: 'kubectl get pod sa-pod -o jsonpath=\'{.spec.serviceAccountName}\'',
             type: 'contains',
-            expected: 'yes',
+            expected: 'pod-reader-sa',
             points: 2,
+          },
+          {
+            name: 'Pod is running',
+            command: 'kubectl get pod sa-pod -o jsonpath=\'{.status.phase}\'',
+            type: 'contains',
+            expected: 'Running',
+            points: 1,
           },
         ],
       },
@@ -897,7 +909,7 @@ kubectl describe hpa php-apache-hpa
       title: 'Create a Job',
       body: `## Task: Create a Job
 
-Create a Job named \`pi-calculator\` in the \`default\` namespace with the following specifications:
+Create a Job named \`pi-calculator\` with the following specifications:
 
 - Image: \`perl:5.34\`
 - Command: \`["perl", "-Mbignum=bpi", "-wle", "print bpi(2000)"]\`
@@ -961,7 +973,7 @@ The job should complete successfully with 3 completions.`,
       title: 'Update Deployment Image',
       body: `## Task: Update Deployment Image
 
-A deployment named \`web-app\` exists in the \`default\` namespace running image \`nginx:1.20\`.
+A deployment named \`web-app\` exists running image \`nginx:1.20\`.
 
 Update the deployment to use image \`nginx:1.21\` and record the change.
 
@@ -1014,7 +1026,7 @@ The deployment should be running nginx:1.21 and the rollout history should show 
       title: 'Create NodePort Service',
       body: `## Task: Create NodePort Service
 
-Create a NodePort service named \`web-nodeport\` in the \`default\` namespace with the following specifications:
+Create a NodePort service named \`web-nodeport\` with the following specifications:
 
 - Selector: \`app=web\`
 - Port: 80
@@ -1079,7 +1091,7 @@ The service should expose port 30080 on all nodes.`,
 
 Create a DaemonSet named \`log-collector\` in the \`kube-system\` namespace with the following specifications:
 
-- Image: \`fluentd:v1.14\`
+- Image: \`fluentd:v1.14-1\`
 - Container name: \`fluentd\`
 - Mount host path \`/var/log\` to container path \`/var/log\`
 - Labels: \`app=log-collector\`
@@ -1107,7 +1119,7 @@ The DaemonSet should have one pod running on each node.`,
             name: 'Correct image',
             command: 'kubectl get daemonset log-collector -n kube-system -o jsonpath=\'{.spec.template.spec.containers[0].image}\'',
             type: 'contains',
-            expected: 'fluentd:v1.14',
+            expected: 'fluentd:v1.14-1',
             points: 2,
           },
           {
@@ -1139,7 +1151,7 @@ The DaemonSet should have one pod running on each node.`,
       title: 'Troubleshoot Pod Failure',
       body: `## Task: Troubleshoot Pod Failure
 
-A pod named \`broken-app\` in the \`default\` namespace is in CrashLoopBackOff state.
+A pod named \`broken-app\` is in CrashLoopBackOff state.
 
 Investigate and fix the issue. The pod should:
 - Use image: \`busybox:1.35\`
@@ -1378,7 +1390,7 @@ kubectl exec init-demo -- cat /work-dir/ready.txt
       title: 'Resource Quota',
       body: `## Task: Create Resource Quota
 
-Create a ResourceQuota named \`compute-quota\` in the \`default\` namespace with:
+Create a ResourceQuota named \`compute-quota\` with:
 
 - \`requests.cpu\`: 4
 - \`requests.memory\`: 8Gi
@@ -1439,7 +1451,7 @@ kubectl describe resourcequota compute-quota
       title: 'LimitRange Configuration',
       body: `## Task: Create LimitRange
 
-Create a LimitRange named \`mem-limit-range\` in the \`default\` namespace that:
+Create a LimitRange named \`mem-limit-range\` that:
 
 - Sets default memory request: 128Mi
 - Sets default memory limit: 256Mi
@@ -1624,23 +1636,21 @@ kubectl describe pod toleration-pod | grep -A5 Tolerations
       title: 'Node Affinity',
       body: `## Task: Configure Node Affinity
 
-1. First, label a node:
-\`\`\`bash
-kubectl label nodes <node-name> disktype=ssd
-\`\`\`
+A node has been labeled with \`disktype=ssd\`.
 
-2. Create a pod named \`affinity-pod\` with:
-   - Image: \`nginx:1.21\`
-   - Required node affinity: \`disktype=ssd\`
+Create a pod named \`affinity-pod\` with:
+- Image: \`nginx:1.21\`
+- Required node affinity: \`disktype=ssd\`
 
 ### Verification
 
 \`\`\`bash
 kubectl get pod affinity-pod -o wide
-kubectl describe pod affinity-pod | grep -A10 "Node-Selectors"
+kubectl describe pod affinity-pod | grep -A10 "Affinity"
 \`\`\``,
       difficulty: 'hard',
       category: 'Scheduling',
+      setupScript: 'kubectl label nodes $(kubectl get nodes -o jsonpath=\'{.items[0].metadata.name}\') disktype=ssd --overwrite',
       verificationConfig: {
         checks: [
           {
@@ -1648,21 +1658,28 @@ kubectl describe pod affinity-pod | grep -A10 "Node-Selectors"
             command: 'kubectl get pod affinity-pod -o jsonpath=\'{.metadata.name}\'',
             type: 'contains',
             expected: 'affinity-pod',
-            points: 3,
+            points: 2,
+          },
+          {
+            name: 'Pod is running or pending',
+            command: 'kubectl get pod affinity-pod -o jsonpath=\'{.status.phase}\'',
+            type: 'not-empty',
+            expected: '',
+            points: 1,
           },
           {
             name: 'Node affinity configured',
-            command: 'kubectl get pod affinity-pod -o jsonpath=\'{.spec.affinity.nodeAffinity}\'',
+            command: 'kubectl get pod affinity-pod -o jsonpath=\'{.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution}\'',
             type: 'not-empty',
             expected: '',
-            points: 3,
+            points: 2,
           },
           {
             name: 'Affinity key is disktype',
             command: 'kubectl get pod affinity-pod -o jsonpath=\'{.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key}\'',
             type: 'contains',
             expected: 'disktype',
-            points: 2,
+            points: 3,
           },
           {
             name: 'Affinity value is ssd',
@@ -1821,7 +1838,7 @@ kubectl get svc myapp-service
       title: 'Network Policies',
       body: `## Task: Configure Network Policies
 
-Create a NetworkPolicy named \`db-policy\` in the \`default\` namespace that:
+Create a NetworkPolicy named \`db-policy\` that:
 
 - Applies to pods with label \`app=database\`
 - Allows ingress from pods with label \`app=backend\` on port 3306
@@ -1981,7 +1998,7 @@ kubectl describe hpa api-hpa
 Create a DaemonSet named \`log-collector\` that:
 
 - Runs on all nodes
-- Image: \`fluentd:v1.14\`
+- Image: \`fluentd:v1.14-1\`
 - Container name: \`fluentd\`
 - Mounts host path \`/var/log\` to \`/var/log\` in the container
 
@@ -2006,7 +2023,7 @@ kubectl describe daemonset log-collector
             name: 'Correct image',
             command: 'kubectl get daemonset log-collector -o jsonpath=\'{.spec.template.spec.containers[0].image}\'',
             type: 'contains',
-            expected: 'fluentd:v1.14',
+            expected: 'fluentd:v1.14-1',
             points: 2,
           },
           {
