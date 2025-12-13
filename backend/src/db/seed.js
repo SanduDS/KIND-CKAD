@@ -847,7 +847,8 @@ kubectl get pod sa-pod
 
 1. Create a deployment named \`php-apache\`:
 \`\`\`bash
-kubectl create deployment php-apache --image=registry.k8s.io/hpa-example --requests=cpu=200m
+kubectl create deployment php-apache --image=registry.k8s.io/hpa-example
+kubectl set resources deployment php-apache --requests=cpu=200m
 kubectl expose deployment php-apache --port=80
 \`\`\`
 
@@ -987,7 +988,7 @@ kubectl rollout history deployment web-app
 The deployment should be running nginx:1.21 and the rollout history should show the change.`,
       difficulty: 'easy',
       category: 'Deployments',
-      setupScript: 'kubectl create deployment web-app --image=nginx:1.20 --replicas=3',
+      setupScript: 'kubectl create deployment web-app --image=nginx:1.20 && kubectl scale deployment web-app --replicas=3',
       verificationConfig: {
         checks: [
           {
@@ -2249,7 +2250,7 @@ kubectl rollout status deployment/api-service
 \`\`\``,
       difficulty: 'easy',
       category: 'Deployments',
-      setupScript: 'kubectl create deployment api-service --image=nginx:1.20 --replicas=3 && kubectl set image deployment/api-service nginx=nginx:1.21 --record',
+      setupScript: 'kubectl create deployment api-service --image=nginx:1.20 && kubectl scale deployment api-service --replicas=3 && kubectl set image deployment/api-service nginx=nginx:1.21 --record',
       verificationConfig: {
         checks: [
           {
@@ -2352,7 +2353,6 @@ kubectl describe job batch-processor
 Create a Service named \`external-db\` of type ExternalName that:
 
 - Maps to external database: \`db.example.com\`
-- Port: 5432
 
 This allows pods to access the external database using the service name.
 
