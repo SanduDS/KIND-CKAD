@@ -93,28 +93,24 @@ export function initializeWebSocket(server) {
         }
       }
 
-      // Spawn PTY process using socat (KodeCloud's approach)
-      // socat provides the most robust terminal emulation with proper signal handling
+      // Spawn PTY process - use docker exec directly for cleaner terminal handling
       const containerName = `term-${session.cluster_name}`;
       
-      // Build docker exec command that socat will wrap
-      // Set COLUMNS and LINES explicitly to help bash handle line wrapping
-      const dockerCmd = `docker exec -it -e TERM=xterm-256color -e COLORTERM=truecolor -e LANG=C.UTF-8 -e LC_ALL=C.UTF-8 -e COLUMNS=120 -e LINES=30 ${containerName} /bin/bash`;
-      
-      ptyProcess = spawn('socat', [
-        '-,raw,echo=0',
-        `EXEC:"${dockerCmd}",pty,stderr,setsid,sigint,sane`
+      // Use docker exec directly without socat for better compatibility
+      // This provides cleaner output without rendering artifacts
+      ptyProcess = spawn('docker', [
+        'exec',
+        '-it',
+        containerName,
+        '/bin/bash'
       ], {
         name: 'xterm-256color',
         cols: 120,
         rows: 30,
         cwd: process.env.HOME,
         env: {
-          ...process.env,
           TERM: 'xterm-256color',
           COLORTERM: 'truecolor',
-          COLUMNS: '120',
-          LINES: '30',
         },
       });
 
@@ -124,9 +120,24 @@ export function initializeWebSocket(server) {
       // Log PTY creation
       logger.info('PTY process created', { 
         sessionId, 
-        containerName,
-        pid: ptyProcess.pid 
+        containerName
       });
+
+      // Initialize terminal with proper settings for line wrapping
+      // Wait for bash to be ready, then set terminal properties
+      setTimeout(() => {
+        if (ptyProcess && ws.readyState === ws.OPEN) {
+          // Use a subshell to set stty without showing the command
+          // onlcr flag ensures proper line wrapping behavior
+          ptyProcess.write('(stty rows 30 cols 120 onlcr) 2>/dev/null\r');
+          // Small delay then clear any output
+          setTimeout(() => {
+            if (ptyProcess && ws.readyState === ws.OPEN) {
+              ptyProcess.write('clear\r');
+            }
+          }, 50);
+        }
+      }, 200);
 
       // Handle PTY output -> WebSocket
       ptyProcess.on('data', (data) => {
@@ -179,6 +190,8 @@ export function initializeWebSocket(server) {
             case 'resize':
               if (ptyProcess && parsed.cols && parsed.rows) {
                 try {
+                  // PTY resize automatically updates the terminal dimensions
+                  // No need to write stty commands which would be visible
                   ptyProcess.resize(parsed.cols, parsed.rows);
                 } catch (error) {
                   logger.error('Failed to resize PTY', { sessionId, error: error.message });
