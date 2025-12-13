@@ -69,6 +69,8 @@ export default function Terminal({ sessionId, wsUrl, accessToken }: TerminalProp
         cursorStyle: 'block',
         scrollback: 5000,
         convertEol: true,
+        scrollOnUserInput: true,
+        allowProposedApi: true,
         windowOptions: {
           setWinLines: true,
         },

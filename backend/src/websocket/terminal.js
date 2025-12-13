@@ -111,6 +111,8 @@ export function initializeWebSocket(server) {
         env: {
           TERM: 'xterm-256color',
           COLORTERM: 'truecolor',
+          COLUMNS: '120',
+          LINES: '30',
         },
       });
 
@@ -127,15 +129,9 @@ export function initializeWebSocket(server) {
       // Wait for bash to be ready, then set terminal properties
       setTimeout(() => {
         if (ptyProcess && ws.readyState === ws.OPEN) {
-          // Use a subshell to set stty without showing the command
-          // onlcr flag ensures proper line wrapping behavior
-          ptyProcess.write('(stty rows 30 cols 120 onlcr) 2>/dev/null\r');
-          // Small delay then clear any output
-          setTimeout(() => {
-            if (ptyProcess && ws.readyState === ws.OPEN) {
-              ptyProcess.write('clear\r');
-            }
-          }, 50);
+          // Clear screen without showing commands
+          // The COLUMNS and LINES env vars should handle the dimensions
+          ptyProcess.write('clear\r');
         }
       }, 200);
 
