@@ -254,6 +254,131 @@ router.post('/session/complete', authenticate, asyncHandler(async (req, res) => 
 }));
 
 /**
+ * POST /api/tasks/session/skip
+ * Skip current task without verification and move to next
+ * (Allows users to skip questions they want to come back to or can't solve)
+ */
+router.post('/session/skip', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { taskId } = req.body;
+  
+  if (!taskId) {
+    throw new ValidationError('taskId is required');
+  }
+  
+  // Get active session
+  const session = SessionModel.findActiveByUserId(userId);
+  if (!session) {
+    throw new NotFoundError('No active session found');
+  }
+
+  const { assigned, completed } = SessionModel.getAssignedTasks(session.id);
+  
+  if (assigned.length === 0) {
+    throw new NotFoundError('No tasks assigned to this session');
+  }
+  
+  // Validate that this is the current task
+  const currentIndex = session.current_task_id ? session.current_task_id - 1 : 0;
+  const expectedTaskId = assigned[currentIndex];
+  
+  if (taskId !== expectedTaskId) {
+    throw new ValidationError(
+      `Cannot skip task ${taskId}. Current task is ${expectedTaskId} (Question ${currentIndex + 1})`
+    );
+  }
+
+  // Record the skip (score 0) if not already verified
+  const existingResult = TaskResultModel.findBySessionAndTask(session.id, taskId);
+  if (!existingResult) {
+    const task = TaskModel.findById(taskId);
+    TaskResultModel.create({
+      sessionId: session.id,
+      taskId: task.id,
+      userId: userId,
+      passed: false,
+      score: 0,
+      maxScore: task.max_score || 10,
+      checksPassed: 0,
+      checksTotal: 0,
+      verificationOutput: 'Task skipped by user',
+      verificationDetails: [],
+    });
+  }
+
+  // Move to next task
+  const nextIndex = currentIndex + 1;
+  
+  // Clean terminal for next question
+  if (nextIndex < assigned.length) {
+    try {
+      const containerName = `term-${session.cluster_name}`;
+      const TerminalService = (await import('../../services/terminal.js')).default;
+      
+      await TerminalService.cleanTerminalForNextQuestion(
+        containerName,
+        nextIndex + 1
+      );
+      
+      logger.info('Terminal cleaned for next question (skipped)', {
+        sessionId: session.id,
+        questionNumber: nextIndex + 1,
+      });
+      
+      // Execute setup script for the next task if it exists
+      const nextTaskId = assigned[nextIndex];
+      const nextTaskData = TaskModel.findById(nextTaskId);
+      
+      if (nextTaskData && nextTaskData.setup_script) {
+        try {
+          await TerminalService.execCommand(
+            containerName,
+            nextTaskData.setup_script,
+            30000
+          );
+          
+          logger.info('Setup script executed successfully (after skip)', {
+            sessionId: session.id,
+            taskId: nextTaskId,
+          });
+        } catch (setupError) {
+          logger.error('Setup script execution failed (after skip)', {
+            sessionId: session.id,
+            taskId: nextTaskId,
+            error: setupError.message,
+          });
+        }
+      }
+    } catch (error) {
+      logger.warn('Failed to clean terminal for next question (skip)', {
+        sessionId: session.id,
+        error: error.message,
+      });
+    }
+  }
+  
+  // Update session with new current task index
+  const taskData = JSON.stringify({ assigned, completed });
+  SessionModel.updateTaskProgress(session.id, nextIndex + 1, taskData);
+
+  const hasMore = nextIndex < assigned.length;
+  const nextTask = hasMore ? TaskModel.findById(assigned[nextIndex]) : null;
+
+  res.json({
+    success: true,
+    message: hasMore ? 'Question skipped. Moving to next question.' : 'Last question skipped. Session complete.',
+    skipped: true,
+    nextTask: hasMore ? nextTask : null,
+    progress: {
+      current: hasMore ? nextIndex + 1 : assigned.length,
+      total: assigned.length,
+      completed: completed.length,
+      percentage: Math.round((completed.length / assigned.length) * 100)
+    }
+  });
+}));
+
+/**
  * POST /api/tasks/verify
  * Verify task completion using verification checks
  */

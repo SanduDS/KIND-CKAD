@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Trophy,
   Clock,
-  Target
+  Target,
+  SkipForward
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { tasksApi } from '@/lib/api';
@@ -37,6 +38,7 @@ export default function TaskPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [verificationResult, setVerificationResult] = useState<any>(null);
 
@@ -139,6 +141,42 @@ export default function TaskPanel() {
       }
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  const handleSkipTask = async () => {
+    if (!currentTask) return;
+
+    // Confirm skip action
+    const confirmed = window.confirm(
+      'Are you sure you want to skip this question? You will not receive any points for it and cannot go back.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setIsSkipping(true);
+      const result = await tasksApi.skip(currentTask.id);
+
+      if (result.success) {
+        toast.info(result.message);
+        
+        if (result.nextTask) {
+          // Load next task
+          setCurrentTask(result.nextTask);
+          setProgress(result.progress);
+          setIsCompleted(false);
+          setVerificationResult(null);
+        } else {
+          // All tasks completed!
+          setIsCompleted(true);
+        }
+      }
+    } catch (error: any) {
+      console.error('Failed to skip task:', error);
+      toast.error(error.message || 'Failed to skip question');
+    } finally {
+      setIsSkipping(false);
     }
   };
 
@@ -387,6 +425,30 @@ export default function TaskPanel() {
               <CheckCircle2 className="w-5 h-5" />
               Complete & Next Question
               <ChevronRight className="w-5 h-5" />
+            </>
+          )}
+        </button>
+
+        {/* Skip Question Button */}
+        <button
+          onClick={handleSkipTask}
+          disabled={isSkipping || isCompleting}
+          className={clsx(
+            'w-full flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg font-medium transition-all',
+            'bg-terminal-border/50 text-terminal-muted hover:bg-terminal-border hover:text-terminal-fg',
+            'border border-terminal-border',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+        >
+          {isSkipping ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Skipping...
+            </>
+          ) : (
+            <>
+              <SkipForward className="w-4 h-4" />
+              Skip Question (No Points)
             </>
           )}
         </button>

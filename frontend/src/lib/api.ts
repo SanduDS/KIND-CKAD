@@ -441,6 +441,15 @@ export const tasksApi = {
     });
     return response.json();
   },
+
+  // Skip current task and move to next (allows skipping questions)
+  async skip(taskId: number) {
+    const response = await fetchWithAuth('/api/tasks/session/skip', {
+      method: 'POST',
+      body: JSON.stringify({ taskId }),
+    });
+    return response.json();
+  },
 };
 
 // ============ Platform Status ============
